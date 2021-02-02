@@ -1,0 +1,6 @@
+anaconda jupyter
+pytorch pytorch
+pytorch torchtext
+anaconda pandas
+anaconda scikit-learn
+conda-forge wordcloud
