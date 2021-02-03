@@ -1,22 +1,16 @@
 import os
+import time
 import argparse
 from pathlib import Path
 from azureml.core.run import Run
 import torch
-from torchtext.data.utils import ngrams_iterator
-from torchtext.data.utils import get_tokenizer
+from torchtext.data.utils import ngrams_iterator, get_tokenizer, ngrams_iterator
 from torchtext.datasets import text_classification
 import pandas as pd
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-import time
-from torch.utils.data.dataset import random_split
-from torchtext.data.utils import ngrams_iterator, get_tokenizer
-import torch
-
-from .data import setup_datasets
-
+from torch.utils.data import DataLoader, Dataset
+from data import setup_datasets
 
 ###################################################################
 # Helpers                                                         #
@@ -35,7 +29,7 @@ def info(msg, char = "#", width = 75):
     print(char + "   %0*s" % ((-1*width)+5, msg) + char)
     print(char * width)
 
-def download():
+def get_data():
     target = './.data/yelp_review_full_csv'
     if not os.path.exists(target):
         print('downloading {} ...'.format(target))
@@ -154,7 +148,7 @@ def predict(text, model, vocab, ngrams):
 def main(run, data_path, output_path, log_path, layer_width, batch_size, epochs, learning_rate, device):
     info('Data')
     # Get data
-    yelp_train_dataset, yelp_test_dataset = download(batch_size)
+    yelp_train_dataset, yelp_test_dataset = get_data()
     VOCAB_SIZE = len(yelp_train_dataset.get_vocab())
     EMBED_DIM = 32
     #batch_size = 16
@@ -172,7 +166,7 @@ def main(run, data_path, output_path, log_path, layer_width, batch_size, epochs,
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
 
     train_len = int(len(yelp_train_dataset) * 0.95)
-    train_split_data, valid_split_data = random_split(yelp_train_dataset, [train_len, len(yelp_train_dataset) - train_len])
+    train_split_data, valid_split_data = Dataset.random_split(yelp_train_dataset, [train_len, len(yelp_train_dataset) - train_len])
 
     info('Training')
 

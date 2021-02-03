@@ -1,8 +1,7 @@
 
-from torchtext.vocab import build_vocab_from_iterator
-from torchtext.vocab import Vocab
+from torchtext.vocab import build_vocab_from_iterator, Vocab
 from torchtext.datasets import TextClassificationDataset
-from torchtext.utils import download_from_url, extract_archive, unicode_csv_reader
+from torchtext.utils import unicode_csv_reader
 from torchtext.data.utils import get_tokenizer, ngrams_iterator
 from tqdm import tqdm
 import torch
