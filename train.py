@@ -9,7 +9,8 @@ from torchtext.datasets import text_classification
 import pandas as pd
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
+from torch.utils.data.dataset import random_split
 from data import setup_datasets
 
 ###################################################################
@@ -145,7 +146,7 @@ def predict(text, model, vocab, ngrams):
         output = model(text, torch.tensor([0]))
         return output.argmax(1).item() + 1
 
-def main(run, data_path, output_path, log_path, layer_width, batch_size, epochs, learning_rate, device):
+def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rate, device):
     info('Data')
     # Get data
     yelp_train_dataset, yelp_test_dataset = get_data()
@@ -166,7 +167,7 @@ def main(run, data_path, output_path, log_path, layer_width, batch_size, epochs,
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
 
     train_len = int(len(yelp_train_dataset) * 0.95)
-    train_split_data, valid_split_data = Dataset.random_split(yelp_train_dataset, [train_len, len(yelp_train_dataset) - train_len])
+    train_split_data, valid_split_data = random_split(yelp_train_dataset, [train_len, len(yelp_train_dataset) - train_len])
 
     info('Training')
 
@@ -185,9 +186,9 @@ def main(run, data_path, output_path, log_path, layer_width, batch_size, epochs,
         print(f'\tLoss: {train_loss:.4f}(train)\t|\tAcc: {train_acc * 100:.1f}%(train)')
         print(f'\tLoss: {valid_loss:.4f}(valid)\t|\tAcc: {valid_acc * 100:.1f}%(valid)')
 
-    file_output = os.path.join(output_path, 'latest.hdf5')
-    print('Serializing h5 model to:\n{}'.format(file_output))
-    model.save(file_output)
+    #file_output = os.path.join(output_path, 'latest.hdf5')
+    #print('Serializing h5 model to:\n{}'.format(file_output))
+    #model.save(file_output)
 
     info('Test')
 
@@ -200,10 +201,9 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--data', help='directory to training and test data', default='.data')
     parser.add_argument('-g', '--logs', help='log directory', default='logs')
     parser.add_argument('-o', '--outputs', help='output directory', default='outputs')
-    parser.add_argument('-e', '--epochs', help='number of epochs', default=5, type=int)
-    parser.add_argument('-l', '--layer', help='number nodes in internal layer', default=128, type=int)
-    parser.add_argument('-b', '--batch', help='batch size', default=32, type=int)
-    parser.add_argument('-r', '--lr', help='learning rate', default=0.001, type=float)
+    parser.add_argument('-e', '--epochs', help='number of epochs', default=10, type=int)
+    parser.add_argument('-b', '--batch', help='batch size', default=16, type=int)
+    parser.add_argument('-r', '--lr', help='learning rate', default=4.0, type=float)
     args = parser.parse_args()
 
     run = Run.get_context()
@@ -218,7 +218,6 @@ if __name__ == "__main__":
         'output_path': check_dir(args.outputs).resolve(),
         'log_path': check_dir(args.logs).resolve(),
         'epochs': args.epochs,
-        'layer_width': args.layer,
         'batch_size': args.batch,
         'learning_rate': args.lr,
         'device': device
