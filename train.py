@@ -5,7 +5,7 @@ from pathlib import Path
 from azureml.core.run import Run
 import torch
 from torchtext.data.utils import ngrams_iterator, get_tokenizer, ngrams_iterator
-
+from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -67,17 +67,17 @@ def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler,
     train_loss = 0
     train_acc = 0
 
-    # if distributed:
-    #     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    # else:
-    #     train_sampler = None
+    if distributed:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    else:
+        train_sampler = None
 
-    # train_loader = DataLoader(
-    #     train_dataset,
-    #     batch_size= batch_size, shuffle=(train_sampler is None),
-    #     num_workers= num_workers, pin_memory=True, sampler=train_sampler)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size= batch_size, shuffle=(train_sampler is None),
+        num_workers= num_workers, pin_memory=True, sampler=train_sampler)
 
-    for i, (text, offsets, cls) in enumerate(train_dataset):
+    for i, (text, offsets, cls) in enumerate(train_loader):
         optimizer.zero_grad()
         text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
         output = model(text, offsets)
@@ -90,7 +90,7 @@ def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler,
     # Adjust the learning rate
     scheduler.step()
 
-    return train_loss / len(train_dataset), train_acc / len(train_dataset)
+    return train_loss / len(train_loader), train_acc / len(train_loader)
 
 ###################################################################
 # Testing                                                         #
@@ -101,12 +101,12 @@ def test(test_dataset, batch_size, model, criterion, device, distributed, num_wo
     acc = 0
 
 
-    # test_loader = DataLoader(
-    #     test_dataset,
-    #     batch_size=batch_size, shuffle=False,
-    #     num_workers=num_workers, pin_memory=True)
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size, shuffle=False,
+        num_workers=num_workers, pin_memory=True)
 
-    for text, offsets, cls in test_dataset:
+    for text, offsets, cls in test_loader:
         text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
         with torch.no_grad():
             output = model(text, offsets)
@@ -114,7 +114,7 @@ def test(test_dataset, batch_size, model, criterion, device, distributed, num_wo
             loss += loss.item()
             acc += (output.argmax(1) == cls).sum().item()
 
-    return loss / len(test_dataset), acc / len(test_dataset)
+    return loss / len(test_loader), acc / len(test_loader)
 
 
 def predict(text, model, vocab, ngrams):

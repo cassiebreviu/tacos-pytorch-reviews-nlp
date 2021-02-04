@@ -8,6 +8,7 @@ from torchtext.datasets import text_classification
 import pandas as pd
 import torch
 import io
+import os
 
 def _csv_iterator(data_path, ngrams, yield_cls=False):
     tokenizer = get_tokenizer("basic_english")
