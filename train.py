@@ -5,13 +5,12 @@ from pathlib import Path
 from azureml.core.run import Run
 import torch
 from torchtext.data.utils import ngrams_iterator, get_tokenizer, ngrams_iterator
-from torchtext.datasets import text_classification
-import pandas as pd
+
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
-from data import setup_datasets
+from data import get_data
 
 ###################################################################
 # Helpers                                                         #
@@ -30,45 +29,6 @@ def info(msg, char = "#", width = 75):
     print(char + "   %0*s" % ((-1*width)+5, msg) + char)
     print(char * width)
 
-def get_data():
-    target = './.data/yelp_review_full_csv'
-    if not os.path.exists(target):
-        print('downloading {} ...'.format(target))
-        # check directory for data if it doesnt already exist
-        if not os.path.isdir('./.data'):
-            os.mkdir('./.data')
-        #Get train and text dataset to tensor
-        yelp_train_dataset, yelp_test_dataset = text_classification.DATASETS['YelpReviewFull'](
-            root='./.data', ngrams=2, vocab=None)
-
-        print(f'labels: {yelp_train_dataset.get_labels()}')
-        return yelp_train_dataset, yelp_test_dataset
-    else:
-        print('{} already exists, skipping step'.format(str(target)))
-        train_csv_file = "./.data/yelp_review_full_csv/train.csv"
-        test_csv_file = "./.data/yelp_review_full_csv/test.csv"
-        yelp_train_dataset, yelp_test_dataset  = setup_datasets(train_csv_file, test_csv_file, ngrams=2)
-        return yelp_train_dataset, yelp_test_dataset 
-
-def addGender(df):
-    if df['label'] >= 3:
-        return 'F'
-    else:
-        return 'M'
-## TODO: use new dataframe stuff here?
-
-def get_df():
-    #File path to the csv file
-    csv_file = "./.data/yelp_review_full_csv/train.csv"
-
-    # Read csv file into dataframe
-    df = pd.read_csv(csv_file, names=["label", "review"])
-    df['gender'] = df.apply(addGender, axis=1)
-    # Print first 5 rows in the dataframe
-    print(df.head())
-    print(df['label'].value_counts())
-    print(df['gender'].value_counts())
-    return df
 
 def generate_batch(batch):
     label = torch.tensor([entry[0] for entry in batch])
@@ -123,6 +83,10 @@ def train_func(sub_train_, batch_size,optimizer, model, criterion, scheduler, de
 
     return train_loss / len(sub_train_), train_acc / len(sub_train_)
 
+###################################################################
+# Testing                                                         #
+###################################################################
+
 def test(data_, batch_size, model, criterion, device):
     loss = 0
     acc = 0
@@ -145,6 +109,11 @@ def predict(text, model, vocab, ngrams):
                             for token in ngrams_iterator(tokenizer(text), ngrams)])
         output = model(text, torch.tensor([0]))
         return output.argmax(1).item() + 1
+
+###################################################################
+# Main                                                            #
+###################################################################
+
 
 def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rate, device):
     info('Data')

@@ -4,6 +4,8 @@ from torchtext.datasets import TextClassificationDataset
 from torchtext.utils import unicode_csv_reader
 from torchtext.data.utils import get_tokenizer, ngrams_iterator
 from tqdm import tqdm
+from torchtext.datasets import text_classification
+import pandas as pd
 import torch
 import io
 
@@ -18,6 +20,27 @@ def _csv_iterator(data_path, ngrams, yield_cls=False):
                 yield int(row[0]) - 1, ngrams_iterator(tokens, ngrams)
             else:
                 yield ngrams_iterator(tokens, ngrams)
+
+
+def get_data():
+    target = './.data/yelp_review_full_csv'
+    if not os.path.exists(target):
+        print('downloading {} ...'.format(target))
+        # check directory for data if it doesnt already exist
+        if not os.path.isdir('./.data'):
+            os.mkdir('./.data')
+        #Get train and text dataset to tensor
+        yelp_train_dataset, yelp_test_dataset = text_classification.DATASETS['YelpReviewFull'](
+            root='./.data', ngrams=2, vocab=None)
+
+        print(f'labels: {yelp_train_dataset.get_labels()}')
+        return yelp_train_dataset, yelp_test_dataset
+    else:
+        print('{} already exists, skipping step'.format(str(target)))
+        train_csv_file = "./.data/yelp_review_full_csv/train.csv"
+        test_csv_file = "./.data/yelp_review_full_csv/test.csv"
+        yelp_train_dataset, yelp_test_dataset  = setup_datasets(train_csv_file, test_csv_file, ngrams=2)
+        return yelp_train_dataset, yelp_test_dataset 
 
 def setup_datasets(train_csv_path, test_csv_path, root='.data', ngrams=1, vocab=None, include_unk=False):
 
@@ -38,6 +61,25 @@ def setup_datasets(train_csv_path, test_csv_path, root='.data', ngrams=1, vocab=
         raise ValueError("Training and test labels don't match")
     return (TextClassificationDataset(vocab, train_data, train_labels),
             TextClassificationDataset(vocab, test_data, test_labels))
+
+def addGender(df):
+    if df['label'] >= 3:
+        return 'F'
+    else:
+        return 'M'
+
+def get_df():
+    #File path to the csv file
+    csv_file = "./.data/yelp_review_full_csv/train.csv"
+
+    # Read csv file into dataframe
+    df = pd.read_csv(csv_file, names=["label", "review"])
+    df['gender'] = df.apply(addGender, axis=1)
+    # Print first 5 rows in the dataframe
+    print(df.head())
+    print(df['label'].value_counts())
+    print(df['gender'].value_counts())
+    return df
 
 def _create_data_from_iterator(vocab, iterator, include_unk):
     data = []
