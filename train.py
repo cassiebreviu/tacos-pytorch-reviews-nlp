@@ -10,7 +10,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
-from data import get_data
 
 ###################################################################
 # Helpers                                                         #
@@ -123,7 +122,6 @@ def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rat
     dataset = run.input_datasets['prepared_reviews_ds']
     (yelp_train_dataset, yelp_test_dataset) = dataset.random_split(percentage=0.8, seed=111)
 
-    #yelp_train_dataset, yelp_test_dataset = get_data()
     VOCAB_SIZE = len(yelp_train_dataset.get_vocab())
     EMBED_DIM = 32
     #batch_size = 16
