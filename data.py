@@ -5,6 +5,7 @@ from torchtext.utils import unicode_csv_reader
 from torchtext.data.utils import get_tokenizer, ngrams_iterator
 from tqdm import tqdm
 from torchtext.datasets import text_classification
+from torch.utils.data import DataLoader
 import pandas as pd
 import torch
 import io
@@ -23,7 +24,7 @@ def _csv_iterator(data_path, ngrams, yield_cls=False):
                 yield ngrams_iterator(tokens, ngrams)
 
 
-def get_data():
+def get_data(batch_size, num_workers):
     target = './.data/yelp_review_full_csv'
     if not os.path.exists(target):
         print('downloading {} ...'.format(target))
@@ -35,13 +36,35 @@ def get_data():
             root='./.data', ngrams=2, vocab=None)
 
         print(f'labels: {yelp_train_dataset.get_labels()}')
-        return yelp_train_dataset, yelp_test_dataset
+
+        train_sampler = torch.utils.data.distributed.DistributedSampler(yelp_train_dataset)
+        train_loader = DataLoader(
+        yelp_train_dataset,
+        batch_size = batch_size, shuffle=False,
+        num_workers= num_workers, pin_memory=True, sampler=train_sampler)
+
+
+        test_loader = DataLoader(
+            yelp_test_dataset,
+            batch_size=batch_size, shuffle=False,
+            num_workers=num_workers, pin_memory=True)
+        return train_loader, test_loader
     else:
         print('{} already exists, skipping step'.format(str(target)))
         train_csv_file = "./.data/yelp_review_full_csv/train.csv"
         test_csv_file = "./.data/yelp_review_full_csv/test.csv"
         yelp_train_dataset, yelp_test_dataset  = setup_datasets(train_csv_file, test_csv_file, ngrams=2)
-        return yelp_train_dataset, yelp_test_dataset 
+        train_sampler = torch.utils.data.distributed.DistributedSampler(yelp_train_dataset)
+        train_loader = DataLoader(
+        yelp_train_dataset,
+        batch_size = batch_size, shuffle=False,
+        num_workers= num_workers, pin_memory=True, sampler=train_sampler)
+
+        test_loader = DataLoader(
+            yelp_test_dataset,
+            batch_size=batch_size, shuffle=False,
+            num_workers=num_workers, pin_memory=True)
+        return train_loader, test_loader
 
 def setup_datasets(train_csv_path, test_csv_path, root='.data', ngrams=1, vocab=None, include_unk=False):
 
@@ -101,5 +124,5 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
     return data, set(labels)
 
 
-get_data()
+get_data(batch_size = 16, num_workers = 4)
    

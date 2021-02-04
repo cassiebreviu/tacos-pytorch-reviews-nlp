@@ -8,7 +8,7 @@ from torchtext.data.utils import ngrams_iterator, get_tokenizer, ngrams_iterator
 
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+
 from torch.utils.data.dataset import random_split
 import torch.utils.data.distributed
 
@@ -67,17 +67,17 @@ def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler,
     train_loss = 0
     train_acc = 0
 
-    if distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    else:
-        train_sampler = None
+    # if distributed:
+    #     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    # else:
+    #     train_sampler = None
 
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size= batch_size, shuffle=(train_sampler is None),
-        num_workers= num_workers, pin_memory=True, sampler=train_sampler)
+    # train_loader = DataLoader(
+    #     train_dataset,
+    #     batch_size= batch_size, shuffle=(train_sampler is None),
+    #     num_workers= num_workers, pin_memory=True, sampler=train_sampler)
 
-    for i, (text, offsets, cls) in enumerate(train_loader):
+    for i, (text, offsets, cls) in enumerate(train_dataset):
         optimizer.zero_grad()
         text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
         output = model(text, offsets)
@@ -101,12 +101,12 @@ def test(test_dataset, batch_size, model, criterion, device, distributed, num_wo
     acc = 0
 
 
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=True)
+    # test_loader = DataLoader(
+    #     test_dataset,
+    #     batch_size=batch_size, shuffle=False,
+    #     num_workers=num_workers, pin_memory=True)
 
-    for text, offsets, cls in test_loader:
+    for text, offsets, cls in test_dataset:
         text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
         with torch.no_grad():
             output = model(text, offsets)
