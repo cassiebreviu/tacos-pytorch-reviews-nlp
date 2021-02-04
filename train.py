@@ -118,7 +118,12 @@ def predict(text, model, vocab, ngrams):
 def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rate, device):
     info('Data')
     # Get data
-    yelp_train_dataset, yelp_test_dataset = get_data()
+    # dataset object from the run
+    run = Run.get_context()
+    dataset = run.input_datasets['prepared_reviews_ds']
+    (yelp_train_dataset, yelp_test_dataset) = dataset.random_split(percentage=0.8, seed=111)
+
+    #yelp_train_dataset, yelp_test_dataset = get_data()
     VOCAB_SIZE = len(yelp_train_dataset.get_vocab())
     EMBED_DIM = 32
     #batch_size = 16

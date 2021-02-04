@@ -8,6 +8,7 @@ from torchtext.datasets import text_classification
 import pandas as pd
 import torch
 import io
+import os
 
 def _csv_iterator(data_path, ngrams, yield_cls=False):
     tokenizer = get_tokenizer("basic_english")
@@ -98,4 +99,7 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
             labels.append(cls)
             t.update(1)
     return data, set(labels)
+
+
+get_data()
    
