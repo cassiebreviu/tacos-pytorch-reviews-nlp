@@ -39,7 +39,7 @@ os.makedirs(mounted_output_path, exist_ok=True)
 #mounted_input_path = os.path.join(mounted_input_path, 'train.csv')
 #mounted_output_path = os.path.join(mounted_output_path, 'processed.csv')
 
-os.join(mounted_input_path, 'train.csv')
-os.join(mounted_output_path, 'train.csv')
+input = os.join(mounted_input_path, 'train.csv')
+output = os.join(mounted_output_path, 'train.csv')
 
-get_processed_dataset(mounted_input_path, mounted_output_path, ngrams=2)
+get_processed_dataset(input, output, ngrams=2)
