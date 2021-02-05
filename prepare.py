@@ -47,6 +47,7 @@ def setup_datasets(csv_path, ngrams=2, vocab=None, include_unk=False):
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
+    
     print('Vocab has {} entries'.format(len(vocab)))
     print('Creating training data')
     train_data, train_labels = _create_data_from_iterator(
@@ -124,10 +125,13 @@ mounted_input_path = sys.argv[1]
 mounted_output_path = sys.argv[2]
 os.makedirs(mounted_output_path, exist_ok=True)
 
+print(f'mounted_input_path: {mounted_input_path}, mounted_out_path: {mounted_output_path}')
+
 #mounted_input_path = os.path.join(mounted_input_path, 'train.csv')
 #mounted_output_path = os.path.join(mounted_output_path, 'processed.csv')
 
 input = os.join(mounted_input_path, 'train.csv')
 output = os.join(mounted_output_path, 'train.csv')
 
+print(f'input and output path with file: {input}, {output}')
 get_processed_dataset(input, output, ngrams=2)
