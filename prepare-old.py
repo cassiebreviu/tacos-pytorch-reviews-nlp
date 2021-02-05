@@ -1,4 +1,3 @@
-
 from torchtext.vocab import build_vocab_from_iterator, Vocab
 from torchtext.datasets import TextClassificationDataset
 from torchtext.utils import unicode_csv_reader
@@ -10,43 +9,34 @@ import torch
 import io
 import os
 
-def get_data():
-    target = './.data/yelp_review_full_csv'
-    if not os.path.exists(target):
-        print('downloading {} ...'.format(target))
-        # check directory for data if it doesnt already exist
-        if not os.path.isdir('./.data'):
-            os.mkdir('./.data')
-        #Get train and text dataset to tensor
-        yelp_train_dataset, yelp_test_dataset = text_classification.DATASETS['YelpReviewFull'](
-            root='./.data', ngrams=2, vocab=None)
 
-        print(f'labels: {yelp_train_dataset.get_labels()}')
-        return yelp_train_dataset, yelp_test_dataset
-    else:
-        print('{} already exists, skipping step'.format(str(target)))
-        train_csv_file = "./.data/yelp_review_full_csv/train.csv"
-        test_csv_file = "./.data/yelp_review_full_csv/test.csv"
-        yelp_train_dataset, yelp_test_dataset  = setup_datasets(train_csv_file, test_csv_file, ngrams=2)
-        return yelp_train_dataset, yelp_test_dataset 
-
-def setup_datasets(train_csv_path, test_csv_path, root='.data', ngrams=1, vocab=None, include_unk=False):
+def setup_datasets(csv_path, output_csv_path, root='.data', ngrams=1, vocab=None, include_unk=False):
 
     if vocab is None:
-        print('Building Vocab based on {}'.format(train_csv_path))
-        vocab = build_vocab_from_iterator(_csv_iterator(train_csv_path, ngrams))
+        print('Building Vocab based on {}'.format(csv_path))
+        vocab = build_vocab_from_iterator(_csv_iterator(csv_path, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
     print('Vocab has {} entries'.format(len(vocab)))
     print('Creating training data')
     train_data, train_labels = _create_data_from_iterator(
-        vocab, _csv_iterator(train_csv_path, ngrams, yield_cls=True), include_unk)
-    print('Creating testing data')
-    test_data, test_labels = _create_data_from_iterator(
-        vocab, _csv_iterator(test_csv_path, ngrams, yield_cls=True), include_unk)
-    if len(train_labels ^ test_labels) > 0:
-        raise ValueError("Training and test labels don't match")
+        vocab, _csv_iterator(csv_path, ngrams, yield_cls=True), include_unk)
+    # print('Creating testing data')
+    # test_data, test_labels = _create_data_from_iterator(
+    #     vocab, _csv_iterator(test_csv_path, ngrams, yield_cls=True), include_unk)
+    # if len(train_labels ^ test_labels) > 0:
+    #     raise ValueError("Training and test labels don't match")
+    print(type(Vocab))
+    print(type(train_data))
+    print(type(train_labels))
+
+    result = (TextClassificationDataset(vocab, train_data, train_labels))
+    print(type(result))
+    # o = open(output_csv_path, "w")
+    # o.write(result)
+    # o.close()
+  
     return (TextClassificationDataset(vocab, train_data, train_labels),
             TextClassificationDataset(vocab, test_data, test_labels))
 
@@ -100,6 +90,13 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
             t.update(1)
     return data, set(labels)
 
+#
+mounted_input_path = '.\.data\yelp_review_full_csv' #sys.argv[1]
+mounted_output_path = '.\.data\yelp_review_full_csv' #sys.argv[2]
+os.makedirs(mounted_output_path, exist_ok=True)
 
-get_data()
-   
+input_csv_path = os.path.join(mounted_input_path, 'train.csv')
+output_csv_path = os.path.join(mounted_output_path, 'procssed.csv')
+
+
+setup_datasets(input_csv_path, output_csv_path, root='.', ngrams=2)
