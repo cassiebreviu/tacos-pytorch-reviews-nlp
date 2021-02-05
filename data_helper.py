@@ -10,7 +10,7 @@ import io
 import os
 
 
-def setup_datasets(csv_path, output_csv_path, root='.data', ngrams=1, vocab=None, include_unk=False):
+def setup_datasets(csv_path, ngrams=2, vocab=None, include_unk=False):
 
     if vocab is None:
         print('Building Vocab based on {}'.format(csv_path))
@@ -27,18 +27,18 @@ def setup_datasets(csv_path, output_csv_path, root='.data', ngrams=1, vocab=None
     #     vocab, _csv_iterator(test_csv_path, ngrams, yield_cls=True), include_unk)
     # if len(train_labels ^ test_labels) > 0:
     #     raise ValueError("Training and test labels don't match")
-    print(type(Vocab))
-    print(type(train_data))
-    print(type(train_labels))
+    # print(type(Vocab))
+    # print(type(train_data))
+    # print(type(train_labels))
 
-    result = (TextClassificationDataset(vocab, train_data, train_labels))
-    print(type(result))
-    # o = open(output_csv_path, "w")
-    # o.write(result)
-    # o.close()
+    return (TextClassificationDataset(vocab, train_data, train_labels))
+    # print(type(result))
+    # # o = open(output_csv_path, "w")
+    # # o.write(result)
+    # # o.close()
   
-    return (TextClassificationDataset(vocab, train_data, train_labels),
-            TextClassificationDataset(vocab, test_data, test_labels))
+    # return (TextClassificationDataset(vocab, train_data, train_labels),
+    #         TextClassificationDataset(vocab, test_data, test_labels))
 
 def addGender(df):
     if df['label'] >= 3:
@@ -90,13 +90,13 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
             t.update(1)
     return data, set(labels)
 
-#
-mounted_input_path = '.\.data\yelp_review_full_csv' #sys.argv[1]
-mounted_output_path = '.\.data\yelp_review_full_csv' #sys.argv[2]
-os.makedirs(mounted_output_path, exist_ok=True)
+# #
+# mounted_input_path = '.\.data\yelp_review_full_csv' #sys.argv[1]
+# mounted_output_path = '.\.data\yelp_review_full_csv' #sys.argv[2]
+# os.makedirs(mounted_output_path, exist_ok=True)
 
-input_csv_path = os.path.join(mounted_input_path, 'train.csv')
-output_csv_path = os.path.join(mounted_output_path, 'procssed.csv')
+# input_csv_path = os.path.join(mounted_input_path, 'train.csv')
+# output_csv_path = os.path.join(mounted_output_path, 'procssed.csv')
 
 
-setup_datasets(input_csv_path, output_csv_path, root='.', ngrams=2)
+# setup_datasets(input_csv_path, output_csv_path, root='.', ngrams=2)
