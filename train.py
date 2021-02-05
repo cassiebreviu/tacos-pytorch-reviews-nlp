@@ -8,10 +8,12 @@ from torchtext.data.utils import ngrams_iterator, get_tokenizer, ngrams_iterator
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torchtext.datasets import TextClassificationDataset
 from torch.utils.data.dataset import random_split
 import torch.utils.data.distributed
 from data import get_data
+import pickle
+import pandas as pd
 
 ###################################################################
 # Helpers                                                         #
@@ -42,6 +44,11 @@ def generate_batch(batch):
     offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
     text = torch.cat(text)
     return text, offsets, label
+
+def load_vocab(filename):
+    with open(filename, 'rb') as f:
+        vocab = pickle.load(f)
+        return vocab
 
 ###################################################################
 # Training                                                        #
@@ -135,10 +142,19 @@ def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rat
     info('Data')
     # Get data
     # dataset object from the run
-    #run = Run.get_context()
-    #dataset = run.input_datasets['prepared_reviews_ds']
-    #(yelp_train_dataset, yelp_test_dataset) = dataset.random_split(percentage=0.8, seed=111)
-    yelp_train_dataset, yelp_test_dataset = get_data()
+    run = Run.get_context()
+    dataset = run.input_datasets['prepared_reviews_ds']
+    df = pd.read_csv(dataset)
+
+    vocab = load_vocab('vocab.pickle')
+    train_data = df['tensors']
+    train_labels = df['labels']
+
+    #yelp_train_dataset, yelp_test_dataset = get_data()
+
+    full_dataset = TextClassificationDataset(vocab, train_data, train_labels)
+    (yelp_train_dataset, yelp_test_dataset) = full_dataset.random_split(percentage=0.8, seed=111)
+
     VOCAB_SIZE = len(yelp_train_dataset.get_vocab())
     EMBED_DIM = 32
     #batch_size = 16
