@@ -6,13 +6,14 @@ from torchtext.utils import unicode_csv_reader
 from torchtext.data.utils import get_tokenizer, ngrams_iterator
 from tqdm import tqdm
 from torchtext.datasets import text_classification
+from pathlib import Path
 import pandas as pd
 import torch
 import io
 import os
 import sys
 
-def get_processed_dataset(input_path, output_path, ngrams):
+def get_processed_dataset(input_path, ngrams):
    
     yelp_train_dataset = setup_datasets(csv_path=input_path, ngrams=ngrams)
     
@@ -96,6 +97,7 @@ def get_df():
 
 def _csv_iterator(data_path, ngrams, yield_cls=False):
     tokenizer = get_tokenizer("basic_english")
+
     with io.open(data_path, encoding="utf8") as f:
         reader = unicode_csv_reader(f)
         for row in reader:
@@ -125,17 +127,9 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
     return data, set(labels)
 
 
+
 mounted_input_path = sys.argv[1]
-mounted_output_path = sys.argv[2]
-os.makedirs(mounted_output_path, exist_ok=True)
+#mounted_input_path = check_dir(".data\yelp_review_full_csv")
 
-print(f'mounted_input_path: {mounted_input_path}, mounted_out_path: {mounted_output_path}')
-
-#mounted_input_path = os.path.join(mounted_input_path, 'train.csv')
-#mounted_output_path = os.path.join(mounted_output_path, 'processed.csv')
-
-input = os.path.join(mounted_input_path, 'train.csv')
-output = os.path.join(mounted_output_path, 'train.csv')
-
-print(f'input and output path with file: {input}, {output}')
-get_processed_dataset(input, output, ngrams=2)
+print(f'input path: {mounted_input_path}')
+get_processed_dataset(mounted_input_path, ngrams=2)
