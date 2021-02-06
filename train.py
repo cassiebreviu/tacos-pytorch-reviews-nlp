@@ -10,7 +10,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchtext.datasets import TextClassificationDataset
 from torch.utils.data.dataset import random_split
-import torch.utils.data.distributed
 from data import get_data
 import pickle
 import pandas as pd
@@ -69,21 +68,13 @@ class TextSentiment(nn.Module):
         embedded = self.embedding(text, offsets)
         return self.fc(embedded)
 
-def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler, device, distributed, num_workers):
+def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler, device):
 
     # Train the model
     train_loss = 0
     train_acc = 0
 
-    if distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    else:
-        train_sampler = None
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size= batch_size, shuffle=(train_sampler is None),
-        num_workers= num_workers, pin_memory=True, sampler=train_sampler)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     for i, (text, offsets, cls) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -104,15 +95,14 @@ def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler,
 # Testing                                                         #
 ###################################################################
 
-def test(test_dataset, batch_size, model, criterion, device, distributed, num_workers):
+def test(test_dataset, batch_size, model, criterion, device):
     loss = 0
     acc = 0
 
 
     test_loader = DataLoader(
         test_dataset,
-        batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=True)
+        batch_size=batch_size, shuffle=False)
 
     for text, offsets, cls in test_loader:
         text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
@@ -138,22 +128,23 @@ def predict(text, model, vocab, ngrams):
 ###################################################################
 
 
-def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rate, distributed, device, num_workers ):
+def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rate, device):
     info('Data')
     # Get data
     # dataset object from the run
     run = Run.get_context()
     datasets = run.input_datasets['prepared_reviews_ds']
+    print(f'get dataset: {datasets}')
 
     train_df = pd.DataFrame()
     for dataset in enumerate(datasets):
         df = pd.read_parquet(dataset)
         train_df.append(df)
         
-
+    print(f'length of loaded train_df: {len(train_df)}')
     vocab = load_vocab('vocab.pickle')
-    train_data = train_df['tensors']
-    train_labels = train_df['labels']
+    train_data = list(train_df)
+    train_labels = set(train_df['labels'])
 
     #yelp_train_dataset, yelp_test_dataset = get_data()
 
@@ -163,14 +154,10 @@ def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rat
     VOCAB_SIZE = len(yelp_train_dataset.get_vocab())
     EMBED_DIM = 32
     #batch_size = 16
-    NUN_CLASS = len(yelp_train_dataset.get_labels())
-    model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
+    NUM_CLASS = len(yelp_train_dataset.get_labels())
 
-    if not distributed:
-        model = torch.nn.DataParallel(model).cuda()
-    else:
-        model.cuda()
-        model = torch.nn.parallel.DistributedDataParallel(model)
+    print(f'create model VOCAB_SIZE: {VOCAB_SIZE} NUM_CLASS: {NUM_CLASS}')
+    model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUM_CLASS).to(device)
 
     N_EPOCHS = epochs
     #min_valid_loss = float('inf')
@@ -191,8 +178,8 @@ def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rat
     for epoch in range(N_EPOCHS):
 
         start_time = time.time()
-        train_loss, train_acc = train_func(train_split_data, batch_size, optimizer, model, criterion, scheduler, device, distributed, num_workers)
-        valid_loss, valid_acc = test(valid_split_data, batch_size, model, criterion, device, num_workers)
+        train_loss, train_acc = train_func(train_split_data, batch_size, optimizer, model, criterion, scheduler, device)
+        valid_loss, valid_acc = test(valid_split_data, batch_size, model, criterion, device)
 
         secs = int(time.time() - start_time)
         mins = secs / 60
@@ -220,11 +207,6 @@ if __name__ == "__main__":
     parser.add_argument('-e', '--epochs', help='number of epochs', default=10, type=int)
     parser.add_argument('-b', '--batch', help='batch size', default=16, type=int)
     parser.add_argument('-r', '--lr', help='learning rate', default=4.0, type=float)
-    parser.add_argument('-w', '--world-size', default=1, type=int, help='number of distributed processes')
-    parser.add_argument('-u','--dist-url', type=str, help='url used to set up distributed training')
-    parser.add_argument('-t','--dist-backend', default='nccl', type=str, help='distributed backend')
-    parser.add_argument('-k','--rank', default=-1, type=int, help='rank of the worker')
-    parser.add_argument('-n','--numworkers', default=4, type=int, help='number of workers')
     args = parser.parse_args()
 
     run = Run.get_context()
@@ -232,8 +214,6 @@ if __name__ == "__main__":
     print('AML Context: {}'.format(run.id))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
-
-    distributed = args.world_size >= 2
 
     args = {
         'run': run,
@@ -244,8 +224,6 @@ if __name__ == "__main__":
         'batch_size': args.batch,
         'learning_rate': args.lr,
         'device': device,
-        'distributed': distributed,
-        'num_workers': args.numworkers 
     }
 
     # log output
