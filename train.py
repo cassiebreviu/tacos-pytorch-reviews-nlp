@@ -10,7 +10,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchtext.datasets import TextClassificationDataset
 from torch.utils.data.dataset import random_split
-from data import get_data
 import pickle
 import pandas as pd
 
@@ -145,8 +144,6 @@ def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rat
     vocab = load_vocab('vocab.pickle')
     train_data = list(train_df)
     train_labels = set(train_df['labels'])
-
-    #yelp_train_dataset, yelp_test_dataset = get_data()
 
     full_dataset = TextClassificationDataset(vocab, train_data, train_labels)
     (yelp_train_dataset, yelp_test_dataset) = full_dataset.random_split(percentage=0.8, seed=111)
