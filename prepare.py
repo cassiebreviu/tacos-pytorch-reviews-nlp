@@ -13,12 +13,13 @@ import io
 import os
 import sys
 
-def get_processed_dataset(input_path, ngrams):
+def get_processed_dataset(input_path, mounted_output_path, ngrams):
    
     yelp_train_dataset = setup_datasets(csv_path=input_path, ngrams=ngrams)
     
     vocab = yelp_train_dataset.get_vocab()
-    save_vocab(vocab, './vocab.pickle')
+    pickle_path = os.path.join(mounted_output_path, './vocab.pickle')
+    save_vocab(vocab, pickle_path)
 
     print("creating dataframe")
     df = pd.DataFrame(columns=["label", "tensor"])
@@ -30,14 +31,18 @@ def get_processed_dataset(input_path, ngrams):
                 }, ignore_index=True)
         
         # save a file for every 65000 records
-        if i % 65000 == 0 and i != 0:
+        #if i % 65000 == 0 and i != 0:
+        if i == 100:
             # save file
             filename = f'{files_created}_prepared_data.parquet'
-            df.to_parquet(filename)
+            path = os.path.join(mounted_output_path, filename)
+            df.to_parquet(path)
             print(f'{filename} - dataframe saved to parquet')
             # reset dataframe
             df = pd.DataFrame(columns=["label", "tensor"])
             files_created += 1
+            # remove break after testing
+            break
 
 def save_vocab(vocab, path):
     with open(path, 'wb') as f:
@@ -129,7 +134,8 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
 
 
 mounted_input_path = sys.argv[1]
+mounted_output_path = sys.argv[2]
 #mounted_input_path = check_dir(".data\yelp_review_full_csv")
 
 print(f'input path: {mounted_input_path}')
-get_processed_dataset(mounted_input_path, ngrams=2)
+get_processed_dataset(mounted_input_path, mounted_output_path,ngrams=2)
