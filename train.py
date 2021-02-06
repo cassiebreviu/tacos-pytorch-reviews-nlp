@@ -143,12 +143,17 @@ def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rat
     # Get data
     # dataset object from the run
     run = Run.get_context()
-    dataset = run.input_datasets['prepared_reviews_ds']
-    df = pd.read_csv(dataset)
+    datasets = run.input_datasets['prepared_reviews_ds']
+
+    train_df = pd.DataFrame()
+    for dataset in enumerate(datasets):
+        df = pd.read_parquet(dataset)
+        train_df.append(df)
+        
 
     vocab = load_vocab('vocab.pickle')
-    train_data = df['tensors']
-    train_labels = df['labels']
+    train_data = train_df['tensors']
+    train_labels = train_df['labels']
 
     #yelp_train_dataset, yelp_test_dataset = get_data()
 
