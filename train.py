@@ -127,12 +127,12 @@ def predict(text, model, vocab, ngrams):
 ###################################################################
 
 
-def main(run, data_guid, output_path, log_path, batch_size, epochs, learning_rate, device):
+def main(run, input_data, output_path, log_path, batch_size, epochs, learning_rate, device):
     info('Data')
     # Get data
     # dataset object from the run
     run = Run.get_context()
-    datasets = run.input_datasets['prepared_reviews_ds']
+    datasets = run.input_datasets[input_data]
     print(f'get dataset: {datasets}')
 
     train_df = pd.DataFrame()
@@ -214,7 +214,7 @@ if __name__ == "__main__":
 
     args = {
         'run': run,
-        'data_guid': args.data,
+        'input_data': args.data,
         'output_path': args.outputs,
         'log_path': args.logs,
         'epochs': args.epochs,
