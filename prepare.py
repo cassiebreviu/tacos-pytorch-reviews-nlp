@@ -32,6 +32,8 @@ def get_processed_dataset(input_path, mounted_output_path, ngrams):
         
         # save a file for every 65000 records
         if i % 65000 == 0 and i != 0:
+            # add gender to dataset
+            df['gender'] = df.apply(addGender, axis=1)
             # save file
             filename = f'{files_created}_prepared_data.parquet'
             path = os.path.join(mounted_output_path, filename)
@@ -57,45 +59,17 @@ def setup_datasets(csv_path, ngrams=2, vocab=None, include_unk=False):
     
     print('Vocab has {} entries'.format(len(vocab)))
     print('Creating training data')
-    train_data, train_labels = _create_data_from_iterator(
-        vocab, _csv_iterator(csv_path, ngrams, yield_cls=True), include_unk)
-    # print('Creating testing data')
-    # test_data, test_labels = _create_data_from_iterator(
-    #     vocab, _csv_iterator(test_csv_path, ngrams, yield_cls=True), include_unk)
-    # if len(train_labels ^ test_labels) > 0:
-    #     raise ValueError("Training and test labels don't match")
-    # print(type(Vocab))
-    # print(type(train_data))
-    # print(type(train_labels))
+    train_data, train_labels = _create_data_from_iterator(vocab, _csv_iterator(csv_path, ngrams, yield_cls=True), include_unk)
 
     return (TextClassificationDataset(vocab, train_data, train_labels))
-    # print(type(result))
-    # # o = open(output_csv_path, "w")
-    # # o.write(result)
-    # # o.close()
-  
-    # return (TextClassificationDataset(vocab, train_data, train_labels),
-    #         TextClassificationDataset(vocab, test_data, test_labels))
+
 
 def addGender(df):
-    if df['label'] >= 3:
-        return 'F'
-    else:
-        return 'M'
-
-def get_df():
-    #File path to the csv file
-    csv_file = "./.data/yelp_review_full_csv/train.csv"
-
-    # Read csv file into dataframe
-    df = pd.read_csv(csv_file, names=["label", "review"])
-    df['gender'] = df.apply(addGender, axis=1)
-    # Print first 5 rows in the dataframe
-    print(df.head())
-    print(df['label'].value_counts())
-    print(df['gender'].value_counts())
-    return df
-
+    for i, label in enumerate(df['label']):
+        if i % 2 == 0 and label > 2:
+            return 'F'
+        else:
+            return 'M'
 
 def _csv_iterator(data_path, ngrams, yield_cls=False):
     tokenizer = get_tokenizer("basic_english")
