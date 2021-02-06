@@ -99,7 +99,3 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
             labels.append(cls)
             t.update(1)
     return data, set(labels)
-
-
-get_data()
-   

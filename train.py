@@ -127,7 +127,7 @@ def predict(text, model, vocab, ngrams):
 ###################################################################
 
 
-def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rate, device):
+def main(run, data_guid, output_path, log_path, batch_size, epochs, learning_rate, device):
     info('Data')
     # Get data
     # dataset object from the run
@@ -198,7 +198,7 @@ def main(run, data_path, output_path, log_path, batch_size, epochs, learning_rat
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='nlp news')
-    parser.add_argument('-d', '--data', help='directory to training and test data', default='.data')
+    parser.add_argument('-d', '--data', help='data guid for input datasets')
     parser.add_argument('-g', '--logs', help='log directory', default='logs')
     parser.add_argument('-o', '--outputs', help='output directory', default='outputs')
     parser.add_argument('-e', '--epochs', help='number of epochs', default=10, type=int)
@@ -214,7 +214,7 @@ if __name__ == "__main__":
 
     args = {
         'run': run,
-        'data_path': check_dir(args.data).resolve(),
+        'data_guid': check_dir(args.data).resolve(),
         'output_path': check_dir(args.outputs).resolve(),
         'log_path': check_dir(args.logs).resolve(),
         'epochs': args.epochs,
