@@ -20,19 +20,23 @@ def get_processed_dataset(input_path, output_path, ngrams):
     save_vocab(vocab, './vocab.pickle')
 
     print("creating dataframe")
-    for data_item in enumerate(yelp_train_dataset):
+    df = pd.DataFrame(columns=["label", "tensor"])
+    files_created = 0
+    for i, data_item in enumerate(yelp_train_dataset):
         df = df.append({
-                "label": data_item[1][0],
-                "tensor":  data_item[1][1].numpy().T
+                "label": data_item[0],
+                "tensor":  data_item[1].numpy().T
                 }, ignore_index=True)
-
-    #df.to_csv('train_tensor_data.csv', index = True)
-    df.to_csv(output_path, index = True)
-    print("dataframe saved to csv")
-    # #save csv
-    # o = open(output_path, "w")
-    # o.write(csv_processed_data)
-    # o.close()
+        
+        # save a file for every 65000 records
+        if i % 65000 == 0 and i != 0:
+            # save file
+            filename = f'{files_created}_prepared_data.parquet'
+            df.to_parquet(filename)
+            print(f'{filename} - dataframe saved to parquet')
+            # reset dataframe
+            df = pd.DataFrame(columns=["label", "tensor"])
+            files_created += 1
 
 def save_vocab(vocab, path):
     with open(path, 'wb') as f:
@@ -130,8 +134,8 @@ print(f'mounted_input_path: {mounted_input_path}, mounted_out_path: {mounted_out
 #mounted_input_path = os.path.join(mounted_input_path, 'train.csv')
 #mounted_output_path = os.path.join(mounted_output_path, 'processed.csv')
 
-input = os.join(mounted_input_path, 'train.csv')
-output = os.join(mounted_output_path, 'train.csv')
+input = os.path.join(mounted_input_path, 'train.csv')
+output = os.path.join(mounted_output_path, 'train.csv')
 
 print(f'input and output path with file: {input}, {output}')
 get_processed_dataset(input, output, ngrams=2)
