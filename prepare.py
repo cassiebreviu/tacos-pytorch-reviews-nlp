@@ -31,8 +31,7 @@ def get_processed_dataset(input_path, mounted_output_path, ngrams):
                 }, ignore_index=True)
         
         # save a file for every 65000 records
-        #if i % 65000 == 0 and i != 0:
-        if i == 100:
+        if i % 65000 == 0 and i != 0:
             # save file
             filename = f'{files_created}_prepared_data.parquet'
             path = os.path.join(mounted_output_path, filename)
@@ -41,8 +40,6 @@ def get_processed_dataset(input_path, mounted_output_path, ngrams):
             # reset dataframe
             df = pd.DataFrame(columns=["label", "tensor"])
             files_created += 1
-            # remove break after testing
-            break
 
 def save_vocab(vocab, path):
     with open(path, 'wb') as f:
