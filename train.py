@@ -214,9 +214,9 @@ if __name__ == "__main__":
 
     args = {
         'run': run,
-        'data_guid': check_dir(args.data).resolve(),
-        'output_path': check_dir(args.outputs).resolve(),
-        'log_path': check_dir(args.logs).resolve(),
+        'data_guid': args.data,
+        'output_path': args.outputs,
+        'log_path': args.logs,
         'epochs': args.epochs,
         'batch_size': args.batch,
         'learning_rate': args.lr,
