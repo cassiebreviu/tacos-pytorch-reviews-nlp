@@ -65,11 +65,10 @@ def setup_datasets(csv_path, ngrams=2, vocab=None, include_unk=False):
 
 
 def addGender(df):
-    for i, label in enumerate(df['label']):
-        if i % 2 == 0 and label > 2:
-            return 'F'
-        else:
-            return 'M'
+    if df['label'] >= 3:
+        return 'F'
+    else:
+        return 'M'
 
 def _csv_iterator(data_path, ngrams, yield_cls=False):
     tokenizer = get_tokenizer("basic_english")
