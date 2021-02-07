@@ -12,17 +12,11 @@ from torchtext.datasets import TextClassificationDataset
 from torch.utils.data.dataset import random_split
 import pickle
 import pandas as pd
+import sys
 
 ###################################################################
 # Helpers                                                         #
 ###################################################################
-def check_dir(path, check=False):
-    if check:
-        assert os.path.exists(path), '{} does not exist!'.format(path)
-    else:
-        if not os.path.exists(path):
-            os.makedirs(path)
-        return Path(path).resolve()
 
 def info(msg, char = "#", width = 75):
     print("")
@@ -127,21 +121,31 @@ def predict(text, model, vocab, ngrams):
 ###################################################################
 
 
-def main(run, input_data, output_path, log_path, batch_size, epochs, learning_rate, device):
+def main(run, input_data, output_path, device):
     info('Data')
     # Get data
     # dataset object from the run
-    run = Run.get_context()
-    datasets = run.input_datasets[input_data]
-    print(f'get dataset: {datasets}')
+    #run = Run.get_context()
+    #datasets = run.input_datasets[input_data]
+    #print(f'get dataset: {datasets}')
 
+    #get all files from directory
+
+
+    #loop thru each file
+    #if parquet file, load to dataset
+        #add file to parquet collection
+    #if pickle file, load to vocab
+        #vocab = load_vocab('vocab.pickle')
+
+    #loop thru parquet collection of files
     train_df = pd.DataFrame()
     for dataset in enumerate(datasets):
         df = pd.read_parquet(dataset)
         train_df.append(df)
         
     print(f'length of loaded train_df: {len(train_df)}')
-    vocab = load_vocab('vocab.pickle')
+    
     train_data = list(train_df)
     train_labels = set(train_df['labels'])
 
@@ -150,19 +154,19 @@ def main(run, input_data, output_path, log_path, batch_size, epochs, learning_ra
 
     VOCAB_SIZE = len(yelp_train_dataset.get_vocab())
     EMBED_DIM = 32
-    #batch_size = 16
+    batch_size = 16
     NUM_CLASS = len(yelp_train_dataset.get_labels())
 
     print(f'create model VOCAB_SIZE: {VOCAB_SIZE} NUM_CLASS: {NUM_CLASS}')
     model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUM_CLASS).to(device)
 
-    N_EPOCHS = epochs
+    N_EPOCHS = 15
     #min_valid_loss = float('inf')
 
     #activation function
     criterion = torch.nn.CrossEntropyLoss().to(device)
     #Stochastic Gradient descient with optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.SGD(model.parameters(), lr=4.0)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
 
@@ -197,44 +201,53 @@ def main(run, input_data, output_path, log_path, batch_size, epochs, learning_ra
     print('\nTest accuracy:', test_acc)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='nlp news')
-    parser.add_argument('-d', '--data', help='data guid for input datasets')
-    parser.add_argument('-g', '--logs', help='log directory', default='logs')
-    parser.add_argument('-o', '--outputs', help='output directory', default='outputs')
-    parser.add_argument('-e', '--epochs', help='number of epochs', default=10, type=int)
-    parser.add_argument('-b', '--batch', help='batch size', default=16, type=int)
-    parser.add_argument('-r', '--lr', help='learning rate', default=4.0, type=float)
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description='nlp news')
+    # parser.add_argument('-d', '--data', help='data guid for input datasets')
+    # parser.add_argument('-g', '--logs', help='log directory', default='logs')
+    # parser.add_argument('-o', '--outputs', help='output directory', default='outputs')
+    # parser.add_argument('-e', '--epochs', help='number of epochs', default=10, type=int)
+    # parser.add_argument('-b', '--batch', help='batch size', default=16, type=int)
+    # parser.add_argument('-r', '--lr', help='learning rate', default=4.0, type=float)
+    # args = parser.parse_args()
+    input_path = sys.argv[1]
+    output_path = sys.argv[2]
+
+    
+
+    print(f'input_path: {input_path}')
+    print(f'output_path: {output_path}')
 
     run = Run.get_context()
+    dataset_reviews = run.input_datasets['prepared_reviews_ds']
+    print(f'dataset_reviews: {dataset_reviews}')
+
     offline = run.id.startswith('OfflineRun')
     print('AML Context: {}'.format(run.id))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
-
-    args = {
-        'run': run,
-        'input_data': args.data,
-        'output_path': args.outputs,
-        'log_path': args.logs,
-        'epochs': args.epochs,
-        'batch_size': args.batch,
-        'learning_rate': args.lr,
-        'device': device,
-    }
+    # args = {
+    #     'run': run,
+    #     'input_data': args.data,
+    #     'output_path': args.outputs,
+    #     'log_path': args.logs,
+    #     'epochs': args.epochs,
+    #     'batch_size': args.batch,
+    #     'learning_rate': args.lr,
+    #     'device': device,
+    # }
 
     # log output
-    if not offline:
-        for item in args:
-            if item != 'run':
-                run.log(item, args[item])
+    # if not offline:
+    #     for item in args:
+    #         if item != 'run':
+    #             run.log(item, args[item])
 
-    info('Args')
+    # info('Args')
 
-    for i in args:
-        print('{} => {}'.format(i, args[i]))
+    # for i in args:
+    #     print('{} => {}'.format(i, args[i]))
 
-    main(**args)
+    main(run, input_path, output_path, device)
 
 
 
