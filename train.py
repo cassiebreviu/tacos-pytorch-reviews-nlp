@@ -126,22 +126,27 @@ def predict(text, model, vocab, ngrams):
 ###################################################################
 
 
-def main(run, input_path, device):
+def main(input_path, output_path, device):
     info('Data')
     # Get data
     # dataset object from the run
     #run = Run.get_context()
     print(f'input_path: {input_path}')
+    print(f'input_path: {output_path}')
     #get all files from directory
     input_path = Path(input_path).resolve()
-    print(f'input_path: {input_path}')
-    file_list = [f for f in listdir(input_path) if isfile(join(input_path, f))]
+    output_path = Path(output_path).resolve()
 
-    print(f'file list length: {len(file_list)}')
+    print(f'input_path: {input_path}')
+    print(f'input_path: {output_path}')
+
+    # Create df and vocab
     train_df = pd.DataFrame(columns=['label', 'tensor'])
     vocab = None
 
-    for file in file_list:
+    # loop thru files and create df and vocab
+    for file in os.listdir(str(input_path)):
+        print(f'\t{file}')
         if file.__contains__('parquet'):
             print(file)
             df = pd.read_parquet(Path(os.path.join(input_path, file)).resolve())
@@ -201,9 +206,20 @@ def main(run, input_path, device):
         print(f'\tLoss: {train_loss:.4f}(train)\t|\tAcc: {train_acc * 100:.1f}%(train)')
         print(f'\tLoss: {valid_loss:.4f}(valid)\t|\tAcc: {valid_acc * 100:.1f}%(valid)')
 
-    #file_output = os.path.join(output_path, 'latest.hdf5')
-    #print('Serializing h5 model to:\n{}'.format(file_output))
-    #model.save(file_output)
+    # TODO fix this so it actually creates and saves a model to the output path
+    file_output = os.path.join(output_path, 'latest.hdf5')
+    print('Serializing h5 model to:\n{}'.format(file_output))
+    model.save(file_output)
+
+    print(f'Output path => {str(file_output)}')
+    print('Writing file to directory... ', end='')
+    with open(file_output, 'wb') as f:
+        f.write()
+    print('done')
+    
+    print('Output Files:')
+    for f in os.listdir(str(output_path)):
+        print(f'\t{f}')
 
     info('Test')
 
@@ -212,51 +228,24 @@ def main(run, input_path, device):
     print('\nTest accuracy:', test_acc)
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(description='nlp news')
-    # parser.add_argument('-d', '--data', help='data guid for input datasets')
-    # parser.add_argument('-g', '--logs', help='log directory', default='logs')
-    # parser.add_argument('-o', '--outputs', help='output directory', default='outputs')
-    # parser.add_argument('-e', '--epochs', help='number of epochs', default=10, type=int)
-    # parser.add_argument('-b', '--batch', help='batch size', default=16, type=int)
-    # parser.add_argument('-r', '--lr', help='learning rate', default=4.0, type=float)
-    # args = parser.parse_args()
-    input_path = sys.argv[1]
-    print(f'input_path: {input_path}')
+    parser = argparse.ArgumentParser(description='test')
+    parser.add_argument('-s', '--source_path', help='source directory')
+    parser.add_argument('-t', '--target_path', help='target path')
+    args = parser.parse_args()
 
-
+    # Get run info.
     run = Run.get_context()
-    #dataset_reviews = run.input_datasets['prepared_reviews_ds']
-    #print(f'dataset_reviews: {dataset_reviews}')
-
     offline = run.id.startswith('OfflineRun')
     print('AML Context: {}'.format(run.id))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
-    # args = {
-    #     'run': run,
-    #     'input_data': args.data,
-    #     'output_path': args.outputs,
-    #     'log_path': args.logs,
-    #     'epochs': args.epochs,
-    #     'batch_size': args.batch,
-    #     'learning_rate': args.lr,
-    #     'device': device,
-    # }
 
-    # log output
-    # if not offline:
-    #     for item in args:
-    #         if item != 'run':
-    #             run.log(item, args[item])
+    input_path = args.source_path
+    output_path = args.target_path
+    print(f'input_path: {input_path}')
+    print(f'input_path: {output_path}')
 
-    # info('Args')
-
-    # for i in args:
-    #     print('{} => {}'.format(i, args[i]))
-
-    main(run, input_path, device)
-
-
+    main(input_path, output_path, device)
 
 # Resources:
 # This example is from the [PyTorch Beginner Tutorial](https://pytorch.org/tutorials/beginner/text_sentiment_ngrams_tutorial.html)
