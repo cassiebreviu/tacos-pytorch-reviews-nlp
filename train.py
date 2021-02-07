@@ -44,6 +44,9 @@ def load_vocab(filename):
         vocab = pickle.load(f)
         return vocab
 
+def array_to_tensor(df_item):
+    return torch.tensor(df_item['tensor'])
+
 ###################################################################
 # Training                                                        #
 ###################################################################
@@ -69,7 +72,7 @@ def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler,
     train_loss = 0
     train_acc = 0
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=generate_batch)
 
     for i, (text, offsets, cls) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -97,7 +100,7 @@ def test(test_dataset, batch_size, model, criterion, device):
 
     test_loader = DataLoader(
         test_dataset,
-        batch_size=batch_size, shuffle=False)
+        batch_size=batch_size, shuffle=False, collate_fn=generate_batch)
 
     for text, offsets, cls in test_loader:
         text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
@@ -132,30 +135,35 @@ def main(run, input_data, device):
     #get all files from directory
     file_list = [f for f in listdir(input_data) if isfile(join(input_data, f))]
 
-    train_df = pd.DataFrame(columns = ["tensors", "labels"])
+    train_df = pd.DataFrame()
     vocab = None
 
     for file in file_list:
         if file.__contains__('parquet'):
             print(file)
-            df = pd.read_parquet(file)
+            df = pd.read_parquet(os.path.join(input_data, file))
             print(len(df))
             train_df = train_df.append(df)
             print(f'length of loaded train_df: {len(train_df)}')
         else:
-            vocab = load_vocab('vocab.pickle')
+            vocab = load_vocab(os.path.join(input_data,'vocab.pickle'))
 
-   
-    train_data = list(train_df)
-    train_labels = set(train_df['labels'])
-
+    print(train_df.head())
+    #create tensor and remove header row
+    train_df['tensor'] = train_df.apply(array_to_tensor, axis=1)
+    train_data = list(train_df.values)
+    train_labels = set(train_df['label'])
+    print(train_labels)
     full_dataset = TextClassificationDataset(vocab, train_data, train_labels)
-    (yelp_train_dataset, yelp_test_dataset) = full_dataset.random_split(percentage=0.8, seed=111)
 
-    VOCAB_SIZE = len(yelp_train_dataset.get_vocab())
+    train_len = int(len(full_dataset) * 0.80)
+    yelp_train_dataset, yelp_test_dataset = random_split(full_dataset, [train_len, len(full_dataset) - train_len])
+
+
+    VOCAB_SIZE = len(full_dataset.get_vocab())
     EMBED_DIM = 32
     batch_size = 16
-    NUM_CLASS = len(yelp_train_dataset.get_labels())
+    NUM_CLASS = len(train_labels)
 
     print(f'create model VOCAB_SIZE: {VOCAB_SIZE} NUM_CLASS: {NUM_CLASS}')
     model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUM_CLASS).to(device)
