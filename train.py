@@ -13,6 +13,8 @@ from torch.utils.data.dataset import random_split
 import pickle
 import pandas as pd
 import sys
+from os import listdir
+from os.path import isfile, join
 
 ###################################################################
 # Helpers                                                         #
@@ -121,31 +123,29 @@ def predict(text, model, vocab, ngrams):
 ###################################################################
 
 
-def main(run, input_data, output_path, device):
+def main(run, input_data, device):
     info('Data')
     # Get data
     # dataset object from the run
     #run = Run.get_context()
-    #datasets = run.input_datasets[input_data]
-    #print(f'get dataset: {datasets}')
 
     #get all files from directory
+    file_list = [f for f in listdir(input_data) if isfile(join(input_data, f))]
 
-
-    #loop thru each file
-    #if parquet file, load to dataset
-        #add file to parquet collection
-    #if pickle file, load to vocab
-        #vocab = load_vocab('vocab.pickle')
-
-    #loop thru parquet collection of files
     train_df = pd.DataFrame()
-    for dataset in enumerate(datasets):
-        df = pd.read_parquet(dataset)
-        train_df.append(df)
-        
-    print(f'length of loaded train_df: {len(train_df)}')
-    
+    vocab = None
+
+    for file in file_list:
+        if file.__contains__('parquet'):
+            print(file)
+            df = pd.read_parquet(file)
+            print(len(df))
+            train_df = train_df.append(df)
+            print(f'length of loaded train_df: {len(train_df)}')
+        else:
+            vocab = load_vocab('vocab.pickle')
+
+   
     train_data = list(train_df)
     train_labels = set(train_df['labels'])
 
@@ -210,16 +210,12 @@ if __name__ == "__main__":
     # parser.add_argument('-r', '--lr', help='learning rate', default=4.0, type=float)
     # args = parser.parse_args()
     input_path = sys.argv[1]
-    output_path = sys.argv[2]
-
-    
-
     print(f'input_path: {input_path}')
-    print(f'output_path: {output_path}')
+
 
     run = Run.get_context()
-    dataset_reviews = run.input_datasets['prepared_reviews_ds']
-    print(f'dataset_reviews: {dataset_reviews}')
+    #dataset_reviews = run.input_datasets['prepared_reviews_ds']
+    #print(f'dataset_reviews: {dataset_reviews}')
 
     offline = run.id.startswith('OfflineRun')
     print('AML Context: {}'.format(run.id))
@@ -247,7 +243,7 @@ if __name__ == "__main__":
     # for i in args:
     #     print('{} => {}'.format(i, args[i]))
 
-    main(run, input_path, output_path, device)
+    main(run, input_path, device)
 
 
 
