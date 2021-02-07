@@ -108,9 +108,9 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
 
 
 def main(input_path, output_path):
-
-    print(f'input path: {input_path}')
-    print(f'input path: {output_path}')
+    input_file_path = Path(os.path.join(input_path, 'train.csv')).resolve()
+    print(f'input file path: {input_file_path}')
+    print(f'output path: {output_path}')
     get_processed_dataset(input_path, output_path,ngrams=2)
 
 if __name__ == "__main__":
