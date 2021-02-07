@@ -5,6 +5,7 @@ from torchtext.datasets import TextClassificationDataset
 from torchtext.utils import unicode_csv_reader
 from torchtext.data.utils import get_tokenizer, ngrams_iterator
 from tqdm import tqdm
+import argparse
 from torchtext.datasets import text_classification
 from pathlib import Path
 import pandas as pd
@@ -101,11 +102,29 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
             t.update(1)
     return data, set(labels)
 
+###################################################################
+# Main                                                            #
+###################################################################
 
 
-mounted_input_path = sys.argv[1]
-mounted_output_path = sys.argv[2]
-#mounted_input_path = check_dir(".data\yelp_review_full_csv")
+def main(input_path, output_path):
 
-print(f'input path: {mounted_input_path}')
-get_processed_dataset(mounted_input_path, mounted_output_path,ngrams=2)
+    print(f'input path: {input_path}')
+    print(f'input path: {output_path}')
+    get_processed_dataset(input_path, output_path,ngrams=2)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='test')
+    parser.add_argument('-s', '--source_path', help='source directory')
+    parser.add_argument('-t', '--target_path', help='target path')
+    args = parser.parse_args()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(device)
+
+    input_path = args.source_path
+    output_path = args.target_path
+    print(f'input_path: {input_path}')
+    print(f'output_path: {output_path}')
+
+    main(input_path, output_path)

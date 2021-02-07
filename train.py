@@ -12,9 +12,6 @@ from torchtext.datasets import TextClassificationDataset
 from torch.utils.data.dataset import random_split
 import pickle
 import pandas as pd
-import sys
-from os import listdir
-from os.path import isfile, join
 
 ###################################################################
 # Helpers                                                         #
