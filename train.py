@@ -135,18 +135,18 @@ def main(run, input_data, device):
     #get all files from directory
     file_list = [f for f in listdir(input_data) if isfile(join(input_data, f))]
 
-    train_df = pd.DataFrame()
+    train_df = pd.DataFrame(columns=['label', 'tensor'])
     vocab = None
 
     for file in file_list:
         if file.__contains__('parquet'):
             print(file)
-            df = pd.read_parquet(os.path.join(input_data, file))
+            df = pd.read_parquet(Path(os.path.join(input_data, file)).resolve())
             print(len(df))
             train_df = train_df.append(df)
             print(f'length of loaded train_df: {len(train_df)}')
         else:
-            vocab = load_vocab(os.path.join(input_data,'vocab.pickle'))
+            vocab = load_vocab(Path(os.path.join(input_data,'vocab.pickle')).resolve())
 
     print(train_df.head())
     #create tensor and remove header row
