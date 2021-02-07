@@ -243,7 +243,7 @@ if __name__ == "__main__":
     input_path = args.source_path
     output_path = args.target_path
     print(f'input_path: {input_path}')
-    print(f'input_path: {output_path}')
+    print(f'output_path: {output_path}')
 
     main(input_path, output_path, device)
 
