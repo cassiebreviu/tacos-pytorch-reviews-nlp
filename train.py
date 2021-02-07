@@ -126,27 +126,30 @@ def predict(text, model, vocab, ngrams):
 ###################################################################
 
 
-def main(run, input_data, device):
+def main(run, input_path, device):
     info('Data')
     # Get data
     # dataset object from the run
     #run = Run.get_context()
-
+    print(f'input_path: {input_path}')
     #get all files from directory
-    file_list = [f for f in listdir(input_data) if isfile(join(input_data, f))]
+    input_path = Path(input_path).resolve()
+    print(f'input_path: {input_path}')
+    file_list = [f for f in listdir(input_path) if isfile(join(input_path, f))]
 
+    print(f'file list length: {len(file_list)}')
     train_df = pd.DataFrame(columns=['label', 'tensor'])
     vocab = None
 
     for file in file_list:
         if file.__contains__('parquet'):
             print(file)
-            df = pd.read_parquet(Path(os.path.join(input_data, file)).resolve())
+            df = pd.read_parquet(Path(os.path.join(input_path, file)).resolve())
             print(len(df))
             train_df = train_df.append(df)
             print(f'length of loaded train_df: {len(train_df)}')
         else:
-            vocab = load_vocab(Path(os.path.join(input_data,'vocab.pickle')).resolve())
+            vocab = load_vocab(Path(os.path.join(input_path,'vocab.pickle')).resolve())
 
     print(train_df.head())
     #create tensor and remove header row
@@ -173,7 +176,7 @@ def main(run, input_data, device):
 
     #activation function
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    #Stochastic Gradient descient with optimizer
+    #Stochastic Gradient discent with optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=4.0)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
