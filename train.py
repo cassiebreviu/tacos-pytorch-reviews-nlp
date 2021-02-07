@@ -46,18 +46,18 @@ def load_vocab(filename):
 def array_to_tensor(df_item):
     return torch.tensor(df_item['tensor'])
 
-def save_model_onnx(model, x_model_input_tensor, model_output_path):
+def save_model_onnx(model, x_input_shape, model_output_path):
     model.eval()
     # Export the model
-    onnx.export(model,   # model being run
-    x,                         # model input (or a tuple for multiple inputs)
+    onnx.export(model,         # model being run
+    x_input_shape,       # model input (or a tuple for multiple inputs)
     model_output_path,         # where to save the model (can be a file or file-like object)
     export_params=True,        # store the trained parameter weights inside the model file
-    opset_version=10,          # the ONNX version to export the model to
+    opset_version=11,          # the ONNX version to export the model to
     do_constant_folding=True,  # whether to execute constant folding for optimization
     input_names = ['input'],   # the model's input names
     output_names = ['output'], # the model's output names
-    dynamic_axes={'input' : {0 : 'batch_size'},    # variable lenght axes
+    dynamic_axes={'input' : {0 : 'batch_size'},    # variable length axes
                   'output' : {0 : 'batch_size'}})
 
   
@@ -65,6 +65,7 @@ def save_model_onnx(model, x_model_input_tensor, model_output_path):
 def load_model_onnx(model_path):
     onnx_model = onnx.load(model_path)
     onnx.checker.check_model(onnx_model)
+    return onnx_model
 
 ###################################################################
 # Training                                                        #
@@ -106,7 +107,6 @@ def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler,
     # Adjust the learning rate
     scheduler.step()
     items_in_dataset = len(train_dataset)
-    print(f'items_in_dataloader: {items_in_dataset}')
 
     train_loss = train_loss / items_in_dataset
     train_acc = train_acc / items_in_dataset
@@ -121,7 +121,6 @@ def test(test_dataset, batch_size, model, criterion, device):
     loss = 0
     acc = 0
 
-
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size, shuffle=False, collate_fn=generate_batch)
@@ -135,7 +134,6 @@ def test(test_dataset, batch_size, model, criterion, device):
             acc += (output.argmax(1) == cls).sum().item()
 
     items_in_dataset = len(test_dataset)
-    print(f'items_in_dataloader: {items_in_dataset}')
 
     val_loss = float(loss) / items_in_dataset
     val_acc = acc / items_in_dataset
@@ -241,14 +239,14 @@ def main(input_path, output_path, device):
         mlflow.log_metric("val_loss", valid_loss)
         mlflow.log_metric("val_acc", valid_acc)
 
-    # ml flow is closed here, probably change that
-    print(f'sample tensor {yelp_train_dataset[0]}')
-    x_model_input_tensor = yelp_train_dataset[0]
+
+    x_input_shape = (torch.tensor([0]), torch.tensor([0]))
+    
     file_output = Path(os.path.join(output_path, "model.onnx")).resolve()
     print(f'Output path => {str(file_output)}')
     print('Writing file to directory... ', end='')
     #model.save(file_output)
-    save_model_onnx(model, x_model_input_tensor, file_output)
+    save_model_onnx(model, x_input_shape, file_output)
     
     print('Output Files:')
     for f in os.listdir(str(output_path)):
@@ -262,7 +260,7 @@ def main(input_path, output_path, device):
     mlflow.log_metric("test_loss", test_loss)
     mlflow.log_metric("test_acc", test_acc)
 
-    mlflow.stop_run()
+    mlflow.end_run()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='test')
     parser.add_argument('-s', '--source_path', help='source directory')
