@@ -14,9 +14,9 @@ import io
 import os
 import sys
 
-def get_processed_dataset(input_path, mounted_output_path, ngrams):
+def get_processed_dataset(input_file_path, mounted_output_path, ngrams):
    
-    yelp_train_dataset = setup_datasets(csv_path=input_path, ngrams=ngrams)
+    yelp_train_dataset = setup_datasets(csv_path=input_file_path, ngrams=ngrams)
     
     vocab = yelp_train_dataset.get_vocab()
     pickle_path = os.path.join(mounted_output_path, './vocab.pickle')
@@ -108,10 +108,25 @@ def _create_data_from_iterator(vocab, iterator, include_unk):
 
 
 def main(input_path, output_path):
-    input_file_path = Path(os.path.join(input_path, 'train.csv')).resolve()
-    print(f'input file path: {input_file_path}')
+    print(f'input file path: {input_path}')
     print(f'output path: {output_path}')
-    get_processed_dataset(input_path, output_path,ngrams=2)
+
+    # Get csv file path from directory
+    in_path = Path(input_path).resolve()
+    output_path = Path(output_path).resolve()
+    print(f'Input path => {str(in_path)}')
+    print('Input Files:')
+
+    input_file = None
+    for file in os.listdir(str(in_path)):
+        if file.__contains__('train'):
+            print(f'\t{file}')
+            input_file = file
+            break
+        
+    input_file_path = Path(os.path.join(input_path, input_file)).resolve()
+    print(f'input_file_path: {input_file_path}')
+    get_processed_dataset(input_file_path, output_path, ngrams=2)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='test')
