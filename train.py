@@ -132,7 +132,7 @@ def main(run, input_data, device):
     #get all files from directory
     file_list = [f for f in listdir(input_data) if isfile(join(input_data, f))]
 
-    train_df = pd.DataFrame()
+    train_df = pd.DataFrame(columns = ["tensors", "labels"])
     vocab = None
 
     for file in file_list:
