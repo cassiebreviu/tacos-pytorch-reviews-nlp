@@ -275,9 +275,6 @@ if __name__ == "__main__":
     print(f'input_path: {input_path}')
     print(f'output_path: {output_path}')
 
-    # Get Workspace config
-    from azureml.core import Workspace
-
     #setup mlflow
     workspace = Workspace.from_config() 
     mlflow.set_tracking_uri(workspace.get_mlflow_tracking_uri())
