@@ -61,7 +61,6 @@ def save_model_onnx(model, x_input_shape, model_output_path):
                   'output' : {0 : 'batch_size'}})
 
   
-                  
 def load_model_onnx(model_path):
     onnx_model = onnx.load(model_path)
     onnx.checker.check_model(onnx_model)
@@ -239,14 +238,6 @@ def main(input_path, output_path, device):
         mlflow.log_metric("val_loss", valid_loss)
         mlflow.log_metric("val_acc", valid_acc)
 
-
-    x_input_shape = (torch.tensor([0]), torch.tensor([0]))
-    
-    file_output = Path(os.path.join(output_path, "model.onnx")).resolve()
-    print(f'Output path => {str(file_output)}')
-    print('Writing file to directory... ', end='')
-    #model.save(file_output)
-    save_model_onnx(model, x_input_shape, file_output)
     
     print('Output Files:')
     for f in os.listdir(str(output_path)):
@@ -261,6 +252,15 @@ def main(input_path, output_path, device):
     mlflow.log_metric("test_acc", test_acc)
 
     mlflow.end_run()
+
+    x_input_shape = (torch.tensor([0]), torch.tensor([0]))
+    
+    file_output = Path(os.path.join(output_path, "model.onnx")).resolve()
+    print(f'Output path => {str(file_output)}')
+    print('Writing file to directory... ', end='')
+    #model.save(file_output)
+    save_model_onnx(model, x_input_shape, file_output)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='test')
     parser.add_argument('-s', '--source_path', help='source directory')
