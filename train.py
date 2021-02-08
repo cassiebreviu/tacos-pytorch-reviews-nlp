@@ -52,15 +52,15 @@ def save_model_onnx(model, x_input_shape, model_output_path):
     model.eval()
     # Export the model
     onnx.export(model,         # model being run
-    x_input_shape,       # model input (or a tuple for multiple inputs)
-    model_output_path,         # where to save the model (can be a file or file-like object)
-    export_params=True,        # store the trained parameter weights inside the model file
-    opset_version=11,          # the ONNX version to export the model to
-    do_constant_folding=True,  # whether to execute constant folding for optimization
-    input_names = ['input'],   # the model's input names
-    output_names = ['output'], # the model's output names
-    dynamic_axes={'input' : {0 : 'batch_size'},    # variable length axes
-                  'output' : {0 : 'batch_size'}})
+                x_input_shape,       # model input (or a tuple for multiple inputs)
+                model_output_path,         # where to save the model (can be a file or file-like object)
+                export_params=True,        # store the trained parameter weights inside the model file
+                opset_version=11,          # the ONNX version to export the model to
+                do_constant_folding=True,  # whether to execute constant folding for optimization
+                input_names = ['input'],   # the model's input names
+                output_names = ['output'], # the model's output names
+                dynamic_axes={'input' : {0 : 'batch_size'},    # variable length axes
+                              'output' : {0 : 'batch_size'}})
 
   
 def load_model_onnx(model_path):
@@ -68,14 +68,22 @@ def load_model_onnx(model_path):
     onnx.checker.check_model(onnx_model)
     return onnx_model
 
-def register_model(name, model_path, ws):
-    ws.get_details()
+def register_model(name, model_path, run):
     print("Registering ", name)
-    registered_model = Model.register(model_path=model_path,
-                                        model_name=name,
-                                        workspace=ws)
-    print("Registered ", registered_model.id)
-    return registered_model.id
+    if run != None:
+        run.upload_file(name, str(model_path))
+            
+        model = run.register_model(model_name='tacoreviewsmodel', 
+                            model_path=name, 
+                            model_framework="PyTorch", 
+                            model_framework_version=torch.__version__, 
+                            description="Review sentiment model")
+
+        print("Registered ", model.id)
+        return model.id
+    else:
+        print('No active run avaiable to register')
+        return None
 
 ###################################################################
 # Training                                                        #
@@ -87,16 +95,18 @@ class TextSentiment(nn.Module):
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=True)
         self.fc = nn.Linear(embed_dim, num_class)
         self.init_weights()
+
     def init_weights(self):
         initrange = 0.5
         self.embedding.weight.data.uniform_(-initrange, initrange)
         self.fc.weight.data.uniform_(-initrange, initrange)
         self.fc.bias.data.zero_()
+
     def forward(self, text, offsets):
         embedded = self.embedding(text, offsets)
-        return self.fc(embedded)
+        return F.softmax(self.fc(embedded), dim=1)
 
-def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler, device):
+def train_func(train_dataset, batch_size, optimizer, model, criterion, scheduler, device):
 
     # Train the model
     train_loss = 0
@@ -104,15 +114,25 @@ def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler,
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=generate_batch)
 
-    for i, (text, offsets, cls) in enumerate(train_loader):
+    for _, (text, offsets, cls) in enumerate(train_loader):
         optimizer.zero_grad()
         text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
         output = model(text, offsets)
         loss = criterion(output, cls)
-        train_loss += loss.item()
+        
         loss.backward()
         optimizer.step()
-        train_acc += (output.argmax(1) == cls).sum().item()
+
+        # logging batch metrics
+        batch_loss = loss.item()
+        batch_acc = (output.argmax(1) == cls).sum().item()
+
+        #mlflow.log_metric("batch_loss", batch_loss)
+        #mlflow.log_metric("batch_acc", batch_acc / float(len(cls)))
+
+        # accumulating epoch metrics
+        train_loss += batch_loss
+        train_acc += batch_acc
 
     # Adjust the learning rate
     scheduler.step()
@@ -162,8 +182,7 @@ def predict(text, model, vocab, ngrams):
 # Main                                                            #
 ###################################################################
 
-
-def main(input_path, output_path, device, ws):
+def main(input_path, output_path, device, run, epochs):
     info('Data')
     # Get data
     # dataset object from the run
@@ -181,15 +200,20 @@ def main(input_path, output_path, device, ws):
     train_df = pd.DataFrame(columns=['label', 'tensor'])
     vocab = None
 
+    # to shorten training time
+    parquet_files = 10000
+
     # loop thru files and create df and vocab
     for file in os.listdir(str(input_path)):
         print(f'\t{file}')
         if file.__contains__('parquet'):
-            print(file)
-            df = pd.read_parquet(Path(os.path.join(input_path, file)).resolve())
-            print(len(df))
-            train_df = train_df.append(df)
-            print(f'length of loaded train_df: {len(train_df)}')
+            if parquet_files > 0:
+                print(file)
+                df = pd.read_parquet(Path(os.path.join(input_path, file)).resolve())
+                print(len(df))
+                train_df = train_df.append(df)
+                print(f'length of loaded train_df: {len(train_df)}')
+                parquet_files -= 1
         else:
             vocab = load_vocab(Path(os.path.join(input_path,'vocab.pickle')).resolve())
 
@@ -213,13 +237,13 @@ def main(input_path, output_path, device, ws):
     print(f'create model VOCAB_SIZE: {VOCAB_SIZE} NUM_CLASS: {NUM_CLASS}')
     model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUM_CLASS).to(device)
 
-    N_EPOCHS = 20
+    N_EPOCHS = epochs
 
     #min_valid_loss = float('inf')
 
-    #activation function
+    # loss function
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    #Stochastic Gradient discent with optimizer
+    # using Adam
     optimizer = torch.optim.SGD(model.parameters(), lr=4.0)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
@@ -261,25 +285,41 @@ def main(input_path, output_path, device, ws):
 
     mlflow.end_run()
 
-    x_input_shape = (torch.tensor([0]).to(device), torch.tensor([0]).to(device))
-    file_output = Path(os.path.join(output_path, "model.onnx")).resolve()
-    print(f'Output path => {str(file_output)}')
-    print('Writing file to directory... ', end='')
-    #model.save(file_output)
-    save_model_onnx(model, x_input_shape, file_output)
-    #register_model('model.onnx',output_path, ws)
+    # Saving model files
+    print(f'Output path => {str(output_path)}')
+
+    model_name = "model.pth"
+    vocab_name = "vocab.data"
+
+    file_output = (output_path / model_name).resolve()
+    print(f'Writing model to {str(file_output)}... ', end='')
+    torch.save(model.to('cpu'), str(file_output))
+    print('Done!')
+
+    vocab_file = (output_path / vocab_name).resolve()
+    print(f'Writing vocab to {str(vocab_file)}... ', end='')
+    torch.save(full_dataset.get_vocab(), str(vocab_file))
+    print("Done!")
+
+    if run != None:
+        print("Registering model")
+        folder = 'model_files'
+        run.upload_folder(name=folder, path=str(output_path))
+        model = run.register_model(model_name='tacoreviewsmodel', 
+                            model_path=folder, 
+                            model_framework="PyTorch", 
+                            model_framework_version=torch.__version__, 
+                            description="Review sentiment model")
+        print(f'Registered {model.id}')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='test')
     parser.add_argument('-s', '--source_path', help='source directory')
     parser.add_argument('-t', '--target_path', help='target path')
+    parser.add_argument('-e', '--epochs', help="number of epochs", type=int, default=3)
+    parser.add_argument('-n', '--experiment_name', help='experiment name', default='nlp-sentiment-reviews-train')
     args = parser.parse_args()
-
-    # Get run info.
-    run = Run.get_context()
-    ws = run.experiment.workspace
-    offline = run.id.startswith('OfflineRun')
-    print('AML Context: {}'.format(run.id))
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
 
@@ -288,12 +328,20 @@ if __name__ == "__main__":
     print(f'input_path: {input_path}')
     print(f'output_path: {output_path}')
 
-    #setup mlflow
-    mlflow.set_tracking_uri(ws.get_mlflow_tracking_uri())
-    experiment_name = 'nlp-sentiment-reviews-train' 
-    mlflow.set_experiment(experiment_name)
+    # Get run info.
+    run = Run.get_context()
+    print('AML Context: {}'.format(run.id))
+    offline = run.id.startswith('OfflineRun')
+    if offline:
+        run = None
 
-    main(input_path, output_path, device, ws)
+    #setup mlflow
+    if run != None:
+        mlflow.set_tracking_uri(run.experiment.workspace.get_mlflow_tracking_uri())
+
+    mlflow.set_experiment(args.experiment_name)
+
+    main(input_path, output_path, device, run, args.epochs)
 
 # Resources:
 # This example is from the [PyTorch Beginner Tutorial](https://pytorch.org/tutorials/beginner/text_sentiment_ngrams_tutorial.html)
