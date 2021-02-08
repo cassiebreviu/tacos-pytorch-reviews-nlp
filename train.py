@@ -14,7 +14,8 @@ import pickle
 import pandas as pd
 import torch.onnx as onnx
 import mlflow
-from azureml.core import Workspace 
+from azureml.core import Workspace, Experiment, Model 
+import joblib
 
 ###################################################################
 # Helpers                                                         #
@@ -66,6 +67,15 @@ def load_model_onnx(model_path):
     onnx_model = onnx.load(model_path)
     onnx.checker.check_model(onnx_model)
     return onnx_model
+
+def register_model(name, model_path, ws):
+    ws.get_details()
+    print("Registering ", name)
+    registered_model = Model.register(model_path=model_path,
+                                        model_name=name,
+                                        workspace=ws)
+    print("Registered ", registered_model.id)
+    return registered_model.id
 
 ###################################################################
 # Training                                                        #
@@ -153,7 +163,7 @@ def predict(text, model, vocab, ngrams):
 ###################################################################
 
 
-def main(input_path, output_path, device):
+def main(input_path, output_path, device, ws):
     info('Data')
     # Get data
     # dataset object from the run
@@ -257,6 +267,7 @@ def main(input_path, output_path, device):
     print('Writing file to directory... ', end='')
     #model.save(file_output)
     save_model_onnx(model, x_input_shape, file_output)
+    #register_model('model.onnx',output_path, ws)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='test')
@@ -266,6 +277,7 @@ if __name__ == "__main__":
 
     # Get run info.
     run = Run.get_context()
+    ws = run.experiment.workspace
     offline = run.id.startswith('OfflineRun')
     print('AML Context: {}'.format(run.id))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -277,12 +289,11 @@ if __name__ == "__main__":
     print(f'output_path: {output_path}')
 
     #setup mlflow
-    workspace = Workspace.from_config() 
-    mlflow.set_tracking_uri(workspace.get_mlflow_tracking_uri())
+    mlflow.set_tracking_uri(ws.get_mlflow_tracking_uri())
     experiment_name = 'nlp-sentiment-reviews-train' 
     mlflow.set_experiment(experiment_name)
 
-    main(input_path, output_path, device)
+    main(input_path, output_path, device, ws)
 
 # Resources:
 # This example is from the [PyTorch Beginner Tutorial](https://pytorch.org/tutorials/beginner/text_sentiment_ngrams_tutorial.html)
