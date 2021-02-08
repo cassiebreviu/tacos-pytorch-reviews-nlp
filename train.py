@@ -31,6 +31,7 @@ def info(msg, char = "#", width = 75):
 def generate_batch(batch):
     label = torch.tensor([entry[0] for entry in batch])
     text = [entry[1] for entry in batch]
+    #gender = torch.tensor([entry[2] for entry in batch])
     offsets = [0] + [len(entry) for entry in text]
     # torch.Tensor.cumsum returns the cumulative sum
     # of elements in the dimension dim.
@@ -40,6 +41,14 @@ def generate_batch(batch):
     text = torch.cat(text)
     return text, offsets, label
 
+def split_gender_features(data):
+    # label = [entry[0] for entry in data]
+    # text = [entry[1] for entry in data]
+    gender = [entry[2] for entry in data]
+    #return [label, text], gender
+    return gender
+
+
 def load_vocab(filename):
     with open(filename, 'rb') as f:
         vocab = pickle.load(f)
@@ -47,6 +56,12 @@ def load_vocab(filename):
 
 def array_to_tensor(df_item):
     return torch.tensor(df_item['tensor'])
+
+def gender_to_int(df_item):
+    if df_item['gender'] == 'F':
+        return 0
+    else:
+        return 1
 
 def save_model_onnx(model, x_input_shape, model_output_path):
     model.eval()
@@ -85,6 +100,17 @@ def register_model(name, model_path, run):
         print('No active run avaiable to register')
         return None
 
+def fairness_dashboard(sensitive_feature_df, yelp_test_dataset):
+
+    from fairlearn.widget import FairlearnDashboard
+    #TODO split out test dataset to features and labels
+    X_test, y_test = yelp_test_dataset, yelp_test_dataset
+    FairlearnDashboard(sensitive_features=sensitive_feature_df, 
+                    sensitive_feature_names=['gender'],
+                    y_true=y_test,
+                    y_pred={"lr_model": predict(text, model, vocab, ngrams=2)})
+
+
 ###################################################################
 # Training                                                        #
 ###################################################################
@@ -114,18 +140,18 @@ def train_func(train_dataset, batch_size, optimizer, model, criterion, scheduler
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=generate_batch)
 
-    for _, (text, offsets, cls) in enumerate(train_loader):
+    for _, (text, offsets, label) in enumerate(train_loader):
         optimizer.zero_grad()
-        text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
+        text, offsets, label = text.to(device), offsets.to(device), label.to(device)
         output = model(text, offsets)
-        loss = criterion(output, cls)
+        loss = criterion(output, label)
         
         loss.backward()
         optimizer.step()
 
         # logging batch metrics
         batch_loss = loss.item()
-        batch_acc = (output.argmax(1) == cls).sum().item()
+        batch_acc = (output.argmax(1) == label).sum().item()
 
         #mlflow.log_metric("batch_loss", batch_loss)
         #mlflow.log_metric("batch_acc", batch_acc / float(len(cls)))
@@ -155,13 +181,13 @@ def test(test_dataset, batch_size, model, criterion, device):
         test_dataset,
         batch_size=batch_size, shuffle=False, collate_fn=generate_batch)
 
-    for text, offsets, cls in test_loader:
-        text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
+    for text, offsets, label in test_loader:
+        text, offsets, label = text.to(device), offsets.to(device), label.to(device)
         with torch.no_grad():
             output = model(text, offsets)
-            loss = criterion(output, cls)
+            loss = criterion(output, label)
             loss += loss.item()
-            acc += (output.argmax(1) == cls).sum().item()
+            acc += (output.argmax(1) == label).sum().item()
 
     items_in_dataset = len(test_dataset)
 
@@ -217,17 +243,31 @@ def main(input_path, output_path, device, run, epochs, lr, batch_size):
         else:
             vocab = load_vocab(Path(os.path.join(input_path,'vocab.pickle')).resolve())
 
-    print(train_df.head())
+  
     #create tensor and remove header row
+    #train_df['gender'] = train_df.apply(gender_to_int, axis=1)
     train_df['tensor'] = train_df.apply(array_to_tensor, axis=1)
     train_data = list(train_df.values)
     train_labels = set(train_df['label'])
+    print(train_df.head())
     print(train_labels)
+
     full_dataset = TextClassificationDataset(vocab, train_data, train_labels)
+    
 
+    #gets 80% of length of data to split 80/20 for training
     train_len = int(len(full_dataset) * 0.80)
+    
     yelp_train_dataset, yelp_test_dataset = random_split(full_dataset, [train_len, len(full_dataset) - train_len])
+    # slit off gender from train dataset here?
 
+    # #split out text and label from gender
+    # train_sensitive_feature_gender = split_gender_features(yelp_train_dataset)
+    # test_sensitive_feature_gender = split_gender_features(yelp_test_dataset)
+    # fairness_dashboard(test_sensitive_feature_gender, yelp_test_dataset)
+
+    # print(f'gender train data {len(train_sensitive_feature_gender)}')
+    # print(f'gender test data {len(test_sensitive_feature_gender)}')
 
     VOCAB_SIZE = len(full_dataset.get_vocab())
     EMBED_DIM = 32
