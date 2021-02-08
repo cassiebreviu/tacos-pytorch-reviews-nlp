@@ -182,7 +182,7 @@ def predict(text, model, vocab, ngrams):
 # Main                                                            #
 ###################################################################
 
-def main(input_path, output_path, device, run, epochs):
+def main(input_path, output_path, device, run, epochs, lr, batch_size):
     info('Data')
     # Get data
     # dataset object from the run
@@ -231,7 +231,7 @@ def main(input_path, output_path, device, run, epochs):
 
     VOCAB_SIZE = len(full_dataset.get_vocab())
     EMBED_DIM = 32
-    batch_size = 16
+    batch_size = batch_size
     NUM_CLASS = len(train_labels)
 
     print(f'create model VOCAB_SIZE: {VOCAB_SIZE} NUM_CLASS: {NUM_CLASS}')
@@ -244,7 +244,7 @@ def main(input_path, output_path, device, run, epochs):
     # loss function
     criterion = torch.nn.CrossEntropyLoss().to(device)
     # using Adam
-    optimizer = torch.optim.SGD(model.parameters(), lr=4.0)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
 
@@ -317,6 +317,8 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--source_path', help='source directory')
     parser.add_argument('-t', '--target_path', help='target path')
     parser.add_argument('-e', '--epochs', help="number of epochs", type=int, default=3)
+    parser.add_argument('-l', '--learning_rate', help="learning rate", type=float, default=4.0)
+    parser.add_argument('-b', '--batch_size', help="batch_size", type=int, default=16)
     parser.add_argument('-n', '--experiment_name', help='experiment name', default='nlp-sentiment-reviews-train')
     args = parser.parse_args()
     
@@ -327,6 +329,12 @@ if __name__ == "__main__":
     output_path = args.target_path
     print(f'input_path: {input_path}')
     print(f'output_path: {output_path}')
+
+    lr = args.learning_rate
+    epochs = args.epochs
+    batch_size = args.batch_size
+    print(f'lr: {lr} epochs: {epochs} batch_size: {batch_size}')
+
 
     # Get run info.
     run = Run.get_context()
@@ -341,7 +349,7 @@ if __name__ == "__main__":
 
     mlflow.set_experiment(args.experiment_name)
 
-    main(input_path, output_path, device, run, args.epochs)
+    main(input_path, output_path, device, run, epochs, lr, batch_size)
 
 # Resources:
 # This example is from the [PyTorch Beginner Tutorial](https://pytorch.org/tutorials/beginner/text_sentiment_ngrams_tutorial.html)
