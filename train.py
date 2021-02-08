@@ -239,10 +239,6 @@ def main(input_path, output_path, device):
         mlflow.log_metric("val_acc", valid_acc)
 
     
-    print('Output Files:')
-    for f in os.listdir(str(output_path)):
-        print(f'\t{f}')
-
     info('Test')
 
     test_loss, test_acc = test(yelp_test_dataset,batch_size, model, criterion, device)
@@ -253,8 +249,7 @@ def main(input_path, output_path, device):
 
     mlflow.end_run()
 
-    x_input_shape = (torch.tensor([0]), torch.tensor([0]))
-    
+    x_input_shape = (torch.tensor([0]).to(device), torch.tensor([0]).to(device))
     file_output = Path(os.path.join(output_path, "model.onnx")).resolve()
     print(f'Output path => {str(file_output)}')
     print('Writing file to directory... ', end='')
