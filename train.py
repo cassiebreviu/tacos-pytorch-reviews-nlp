@@ -104,15 +104,24 @@ def train_func(train_dataset, batch_size,optimizer, model, criterion, scheduler,
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=generate_batch)
 
-    for i, (text, offsets, cls) in enumerate(train_loader):
+    for _, (text, offsets, cls) in enumerate(train_loader):
         optimizer.zero_grad()
         text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
         output = model(text, offsets)
         loss = criterion(output, cls)
-        train_loss += loss.item()
+        
         loss.backward()
         optimizer.step()
-        train_acc += (output.argmax(1) == cls).sum().item()
+
+        # logging batch metrics
+        batch_loss = loss.item()
+        batch_acc = (output.argmax(1) == cls).sum().item()
+        mlflow.log_metric("batch_loss", batch_loss)
+        mlflow.log_metric("batch_acc", batch_acc)
+
+        # accumulating epoch metrics
+        train_loss += batch_loss
+        train_acc += batch_acc
 
     # Adjust the learning rate
     scheduler.step()
