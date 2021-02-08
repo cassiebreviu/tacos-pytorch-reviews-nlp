@@ -14,6 +14,7 @@ import pickle
 import pandas as pd
 import torch.onnx as onnx
 import mlflow
+from azureml.core import Workspace 
 
 ###################################################################
 # Helpers                                                         #
@@ -202,7 +203,7 @@ def main(input_path, output_path, device):
     print(f'create model VOCAB_SIZE: {VOCAB_SIZE} NUM_CLASS: {NUM_CLASS}')
     model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUM_CLASS).to(device)
 
-    N_EPOCHS = 15
+    N_EPOCHS = 20
     #min_valid_loss = float('inf')
 
     #activation function
@@ -273,6 +274,15 @@ if __name__ == "__main__":
     output_path = args.target_path
     print(f'input_path: {input_path}')
     print(f'output_path: {output_path}')
+
+    # Get Workspace config
+    from azureml.core import Workspace
+
+    #setup mlflow
+    workspace = Workspace.from_config() 
+    mlflow.set_tracking_uri(workspace.get_mlflow_tracking_uri())
+    experiment_name = 'nlp-sentiment-reviews-train' 
+    mlflow.set_experiment(experiment_name)
 
     main(input_path, output_path, device)
 
