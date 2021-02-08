@@ -204,6 +204,7 @@ def main(input_path, output_path, device):
     model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUM_CLASS).to(device)
 
     N_EPOCHS = 20
+
     #min_valid_loss = float('inf')
 
     #activation function
