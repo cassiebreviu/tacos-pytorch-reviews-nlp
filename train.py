@@ -71,10 +71,10 @@ def load_model_onnx(model_path):
 def register_model(name, model_path, run):
     print("Registering ", name)
     if run != None:
-        run.upload_file('model.onnx', str(model_path))
+        run.upload_file(name, str(model_path))
             
         model = run.register_model(model_name='tacoreviewsmodel', 
-                            model_path="model.onnx", 
+                            model_path=name, 
                             model_framework="PyTorch", 
                             model_framework_version=torch.__version__, 
                             description="Review sentiment model")
@@ -95,14 +95,16 @@ class TextSentiment(nn.Module):
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=True)
         self.fc = nn.Linear(embed_dim, num_class)
         self.init_weights()
+
     def init_weights(self):
         initrange = 0.5
         self.embedding.weight.data.uniform_(-initrange, initrange)
         self.fc.weight.data.uniform_(-initrange, initrange)
         self.fc.bias.data.zero_()
+
     def forward(self, text, offsets):
         embedded = self.embedding(text, offsets)
-        return self.fc(embedded)
+        return F.softmax(self.fc(embedded), dim=1)
 
 def train_func(train_dataset, batch_size, optimizer, model, criterion, scheduler, device):
 
@@ -199,7 +201,7 @@ def main(input_path, output_path, device, run, epochs):
     vocab = None
 
     # to shorten training time
-    parquet_files = 1000
+    parquet_files = 10000
 
     # loop thru files and create df and vocab
     for file in os.listdir(str(input_path)):
@@ -283,12 +285,32 @@ def main(input_path, output_path, device, run, epochs):
 
     mlflow.end_run()
 
-    x_input_shape = (torch.tensor([0]).to(device), torch.tensor([0]).to(device))
-    file_output = (output_path / "model.onnx").resolve()
-    print(f'Output path => {str(file_output)}')
-    print('Writing file to directory... ', end='')
-    save_model_onnx(model, x_input_shape, str(file_output))
-    register_model('model.onnx',file_output, run)
+    # Saving model files
+    print(f'Output path => {str(output_path)}')
+
+    model_name = "model.pth"
+    vocab_name = "vocab.data"
+
+    file_output = (output_path / model_name).resolve()
+    print(f'Writing model to {str(file_output)}... ', end='')
+    torch.save(model.to('cpu'), str(file_output))
+    print('Done!')
+
+    vocab_file = (output_path / vocab_name).resolve()
+    print(f'Writing vocab to {str(vocab_file)}... ', end='')
+    torch.save(full_dataset.get_vocab(), str(vocab_file))
+    print("Done!")
+
+    if run != None:
+        print("Registering model")
+        folder = 'model_files'
+        run.upload_folder(name=folder, path=str(output_path))
+        model = run.register_model(model_name='tacoreviewsmodel', 
+                            model_path=folder, 
+                            model_framework="PyTorch", 
+                            model_framework_version=torch.__version__, 
+                            description="Review sentiment model")
+        print(f'Registered {model.id}')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='test')
