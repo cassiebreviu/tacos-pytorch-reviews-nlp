@@ -1,4 +1,6 @@
+from datetime import datetime
 import os
+import json
 import time
 import argparse
 from pathlib import Path
@@ -201,7 +203,7 @@ def main(input_path, output_path, device, run, epochs):
     vocab = None
 
     # to shorten training time
-    parquet_files = 10000
+    parquet_files = 1
 
     # loop thru files and create df and vocab
     for file in os.listdir(str(input_path)):
@@ -243,7 +245,7 @@ def main(input_path, output_path, device, run, epochs):
 
     # loss function
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    # using Adam
+    # using SGD
     optimizer = torch.optim.SGD(model.parameters(), lr=4.0)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
@@ -288,12 +290,28 @@ def main(input_path, output_path, device, run, epochs):
     # Saving model files
     print(f'Output path => {str(output_path)}')
 
+
+    model_meta = "metadata.json"
     model_name = "model.pth"
     vocab_name = "vocab.data"
 
+    props_output = (output_path / model_meta).resolve()
+    properties = {
+        'vocab_size':  len(full_dataset.get_vocab()),
+        'embed_dim': 32,
+        'num_class': len(train_labels),
+        'creation': datetime.now().strftime("%Y-%m-%d %H:%M"),
+        'run_id': run.id if run != None else 'N/A'
+    }
+
+    print(f'Writing model metadata to {str(props_output)}... ', end='')
+    with open(str(props_output), 'w') as f:
+        json.dump(properties, f, indent=4)
+    print('Done!')
+
     file_output = (output_path / model_name).resolve()
     print(f'Writing model to {str(file_output)}... ', end='')
-    torch.save(model.to('cpu'), str(file_output))
+    torch.save(model.state_dict(), str(file_output))
     print('Done!')
 
     vocab_file = (output_path / vocab_name).resolve()

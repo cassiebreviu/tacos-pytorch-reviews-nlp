@@ -1,0 +1,7 @@
+dependencies:
+- python=3.6.8
+- pip:
+  - azureml-core
+  - azureml-defaults
+  - torch
+  - torchtext

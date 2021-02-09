@@ -7,10 +7,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchtext.data.utils import get_tokenizer
 from torchtext.data.utils import ngrams_iterator
-# azureml imports
-from azureml.core.model import Model
 
-model, dictionary, tokenizer, ngrams  = None, None, None, 2
+from azureml.core.model import Model
 
 class TextSentiment(nn.Module):
     def __init__(self, vocab_size, embed_dim, num_class):
@@ -29,8 +27,13 @@ class TextSentiment(nn.Module):
         embedded = self.embedding(text, offsets)
         return F.softmax(self.fc(embedded), dim=1)
 
+# globals
+model, dictionary, tokenizer, ngrams  = None, None, None, 2
 def init():
     global model, dictionary, tokenizer, ngrams
+    
+    # scoping issue with pickling
+    binding = TextSentiment
 
     try:
         model_files = Model.get_model_path('tacoreviewsmodel')
