@@ -31,7 +31,7 @@ class TextSentiment(nn.Module):
 model, dictionary, tokenizer, ngrams  = None, None, None, 2
 def init():
     global model, dictionary, tokenizer, ngrams
-    
+
     # scoping issue with pickling
     binding = TextSentiment
 

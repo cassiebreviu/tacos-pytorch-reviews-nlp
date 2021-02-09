@@ -285,8 +285,13 @@ def main(input_path, output_path, device, run, epochs, lr, batch_size):
 
     # loss function
     criterion = torch.nn.CrossEntropyLoss().to(device)
+<<<<<<< HEAD
     # using SGD
+    optimizer = torch.optim.SGD(model.parameters(), lr=4.0)
+=======
+    # using Adam
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+>>>>>>> main
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
 
