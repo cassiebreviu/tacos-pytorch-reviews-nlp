@@ -134,3 +134,8 @@ mlruns
 
 .vscode
 data/
+.amlignore*
+
+.ipynb_aml_checkpoints/*.ipynb
+.ipynb.amltmp
+*.ipynb.amltmp
