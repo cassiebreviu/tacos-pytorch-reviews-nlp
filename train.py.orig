@@ -65,6 +65,43 @@ def gender_to_int(df_item):
     else:
         return 1
 
+def save_model_onnx(model, x_input_shape, model_output_path):
+    model.eval()
+    # Export the model
+    onnx.export(model,         # model being run
+                x_input_shape,       # model input (or a tuple for multiple inputs)
+                model_output_path,         # where to save the model (can be a file or file-like object)
+                export_params=True,        # store the trained parameter weights inside the model file
+                opset_version=11,          # the ONNX version to export the model to
+                do_constant_folding=True,  # whether to execute constant folding for optimization
+                input_names = ['input'],   # the model's input names
+                output_names = ['output'], # the model's output names
+                dynamic_axes={'input' : {0 : 'batch_size'},    # variable length axes
+                              'output' : {0 : 'batch_size'}})
+
+  
+def load_model_onnx(model_path):
+    onnx_model = onnx.load(model_path)
+    onnx.checker.check_model(onnx_model)
+    return onnx_model
+
+def register_model(name, model_path, run):
+    print("Registering ", name)
+    if run != None:
+        run.upload_file(name, str(model_path))
+            
+        model = run.register_model(model_name='tacoreviewsmodel', 
+                            model_path=name, 
+                            model_framework="PyTorch", 
+                            model_framework_version=torch.__version__, 
+                            description="Review sentiment model")
+
+        print("Registered ", model.id)
+        return model.id
+    else:
+        print('No active run avaiable to register')
+        return None
+
 def fairness_dashboard(sensitive_feature_df, yelp_test_dataset):
 
     from fairlearn.widget import FairlearnDashboard
@@ -192,7 +229,7 @@ def main(input_path, output_path, device, run, epochs, lr, batch_size):
     vocab = None
 
     # to shorten training time
-    parquet_files = 100
+    parquet_files = 1
 
     # loop thru files and create df and vocab
     for file in os.listdir(str(input_path)):
@@ -248,8 +285,13 @@ def main(input_path, output_path, device, run, epochs, lr, batch_size):
 
     # loss function
     criterion = torch.nn.CrossEntropyLoss().to(device)
+<<<<<<< HEAD
     # using SGD
+    optimizer = torch.optim.SGD(model.parameters(), lr=4.0)
+=======
+    # using Adam
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+>>>>>>> main
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
 
